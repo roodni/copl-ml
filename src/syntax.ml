@@ -16,11 +16,11 @@ let rec exp_to_string = function
   | IntExp i -> string_of_int i
   | BoolExp b -> string_of_bool b
   | BOpExp (op, l, r) ->
-      Printf.sprintf "%s %s %s" (exp_to_string l) (binop_to_string op)
+      Printf.sprintf "(%s %s %s)" (exp_to_string l) (binop_to_string op)
         (exp_to_string r)
   | IfExp (c, t, f) ->
-      Printf.sprintf "if %s then %s else %s" (exp_to_string c) (exp_to_string t)
-        (exp_to_string f)
+      Printf.sprintf "(if %s then %s else %s)" (exp_to_string c)
+        (exp_to_string t) (exp_to_string f)
 
 let rec exp_to_s_string = function
   | IntExp i -> string_of_int i
