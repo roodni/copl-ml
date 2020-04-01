@@ -72,7 +72,16 @@ let parse_test exp str _ =
   assert_equal ~printer:exp_to_s_string exp parsed
 
 let parse_tests =
-  "parse EvalML1"
+  "parse"
   >::: List.map (fun (title, exp, str) -> title >:: parse_test exp str) cases
 
-let () = run_test_tt_main parse_tests
+(* expを文字列化して再度パースし、同じexpになるかどうか調べる *)
+let exp_to_string_test exp =
+  let s = exp_to_string exp in
+  parse_test exp s
+
+let exp_to_string_tests =
+  "exp_to_string"
+  >::: List.map (fun (title, exp, _) -> title >:: exp_to_string_test exp) cases
+
+let () = run_test_tt_main ("tests" >::: [ parse_tests; exp_to_string_tests ])
