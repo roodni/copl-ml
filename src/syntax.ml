@@ -1,16 +1,16 @@
 type binOp = PlusOp | MinusOp | TimesOp | LtOp
 
-type exp =
-  | IntExp of int
-  | BoolExp of bool
-  | BOpExp of binOp * exp * exp
-  | IfExp of exp * exp * exp
-
 let binop_to_string = function
   | PlusOp -> "+"
   | MinusOp -> "-"
   | TimesOp -> "*"
   | LtOp -> "<"
+
+type exp =
+  | IntExp of int
+  | BoolExp of bool
+  | BOpExp of binOp * exp * exp
+  | IfExp of exp * exp * exp
 
 let rec exp_to_string = function
   | IntExp i -> string_of_int i
