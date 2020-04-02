@@ -1,5 +1,5 @@
 open OUnit2
-open Evalml.Exp
+open Evalml.Expr
 open Evalml.Value
 open Evalml.Evaluatee
 open Evalml.Deriv
@@ -46,14 +46,14 @@ let cases =
           IntExp 4 ) );
   ]
 
-let eval_exp_test value exp _ =
-  let evaled, _ = eval_to_deriv { env = []; exp } in
+let eval_expr_test value expr _ =
+  let evaled, _ = eval_to_deriv { env = []; expr } in
   assert_equal ~printer:value_to_string value evaled
 
-let eval_exp_tests =
+let eval_expr_tests =
   "eval EvalML1"
   >::: List.map
-         (fun (title, value, exp) -> title >:: eval_exp_test value exp)
+         (fun (title, value, exp) -> title >:: eval_expr_test value exp)
          cases
 
-let () = run_test_tt_main eval_exp_tests
+let () = run_test_tt_main eval_expr_tests
