@@ -1,5 +1,5 @@
 %{
-open Exp
+open Expr
 open Value
 open Evaluatee
 open Var
@@ -25,8 +25,8 @@ open Var
 %%
 
 toplevel :
-  | en=env TURNSTILE ex=exp END { {env = en; exp = ex} }
-  | ex=exp END { {env = []; exp = ex} }
+  | en=env TURNSTILE ex=expr END { {env = en; expr = ex} }
+  | ex=expr END { {env = []; expr = ex} }
 
 env :
   | { [] }
@@ -42,15 +42,15 @@ value :
   | TRUE { BoolVal true }
   | FALSE { BoolVal false }
 
-exp :
-  | IF c=exp THEN t=exp ELSE f=exp %prec prec_if { IfExp (c, t, f) }
-  | l=exp LT r=exp { BOpExp (LtOp, l, r) }
-  | l=exp PLUS r=exp { BOpExp (PlusOp, l, r) }
-  | l=exp MINUS r=exp { BOpExp (MinusOp, l, r) }
-  | l=exp TIMES r=exp { BOpExp (TimesOp, l, r) }
+expr :
+  | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { IfExp (c, t, f) }
+  | l=expr LT r=expr { BOpExp (LtOp, l, r) }
+  | l=expr PLUS r=expr { BOpExp (PlusOp, l, r) }
+  | l=expr MINUS r=expr { BOpExp (MinusOp, l, r) }
+  | l=expr TIMES r=expr { BOpExp (TimesOp, l, r) }
   | i=INT { IntExp i }
   | MINUS i=INT { IntExp ~-i }
   | TRUE { BoolExp true }
   | FALSE { BoolExp false }
-  | LPAREN e=exp RPAREN { e }
+  | LPAREN e=expr RPAREN { e }
   | id=ID { VarExp (Var id) }

@@ -1,9 +1,9 @@
 open Env
-open Exp
+open Expr
 
-type evaluatee = { env : env; exp : exp }
+type evaluatee = { env : env; expr : expr }
 
-let evaluatee_to_string { env; exp } =
+let evaluatee_to_string { env; expr } =
   if env <> [] then
-    Printf.sprintf "%s |- %s" (env_to_string env) (exp_to_string exp)
-  else Printf.sprintf "|- %s" (exp_to_string exp)
+    Printf.sprintf "%s |- %s" (env_to_string env) (expr_to_string expr)
+  else Printf.sprintf "|- %s" (expr_to_string expr)

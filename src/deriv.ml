@@ -1,4 +1,4 @@
-open Exp
+open Expr
 open Value
 
 (* open Env *)
@@ -77,8 +77,8 @@ let rec output_deriv ?(indent = 0) ?(outchan = stdout) { premises; rule; concl }
 exception EvalError of string
 
 let rec eval_to_deriv evalee =
-  let { env = _; exp } = evalee in
-  match exp with
+  let { env = _; expr } = evalee in
+  match expr with
   | IntExp i ->
       let value = IntVal i in
       (value, { concl = EvalJ { evalee; value }; rule = EInt; premises = [] })
@@ -86,23 +86,23 @@ let rec eval_to_deriv evalee =
       let value = BoolVal b in
       (value, { concl = EvalJ { evalee; value }; rule = EBool; premises = [] })
   | IfExp (c, t, f) ->
-      let cvalue, cderiv = eval_to_deriv { evalee with exp = c } in
-      let retexp, rule =
+      let cvalue, cderiv = eval_to_deriv { evalee with expr = c } in
+      let retexpr, rule =
         match cvalue with
         | BoolVal true -> (t, EIfT)
         | BoolVal false -> (f, EIfF)
         | _ -> raise (EvalError "condition must be boolean: if")
       in
-      let retvalue, retderiv = eval_to_deriv { evalee with exp = retexp } in
+      let retvalue, retderiv = eval_to_deriv { evalee with expr = retexpr } in
       ( retvalue,
         {
           concl = EvalJ { evalee; value = retvalue };
           rule;
           premises = [ cderiv; retderiv ];
         } )
-  | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexp, rexp) -> (
-      let lvalue, lderiv = eval_to_deriv { evalee with exp = lexp }
-      and rvalue, rderiv = eval_to_deriv { evalee with exp = rexp } in
+  | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr) -> (
+      let lvalue, lderiv = eval_to_deriv { evalee with expr = lexpr }
+      and rvalue, rderiv = eval_to_deriv { evalee with expr = rexpr } in
       match (lvalue, rvalue) with
       | IntVal li, IntVal ri ->
           let value, erule, bjudg, brule =
