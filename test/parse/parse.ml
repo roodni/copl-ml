@@ -1,5 +1,5 @@
 open OUnit2
-open Evalml.Syntax
+open Evalml.Exp
 
 let cases =
   [

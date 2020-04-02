@@ -1,10 +1,5 @@
-open Syntax
-
-type value = IntVal of int | BoolVal of bool
-
-let value_to_string = function
-  | IntVal i -> string_of_int i
-  | BoolVal b -> string_of_bool b
+open Exp
+open Value
 
 type rule =
   | EInt
@@ -72,7 +67,7 @@ let rec output_deriv ?(indent = 0) ?(outchan = stdout) { premises; rule; concl }
 
 exception EvalError of string
 
-let rec eval_exp_to_deriv exp =
+let rec eval_to_deriv exp =
   match exp with
   | IntExp i ->
       let value = IntVal i in
@@ -81,14 +76,14 @@ let rec eval_exp_to_deriv exp =
       let value = BoolVal b in
       (value, { concl = EvalJ { exp; value }; rule = EBool; premises = [] })
   | IfExp (c, t, f) ->
-      let cvalue, cderiv = eval_exp_to_deriv c in
+      let cvalue, cderiv = eval_to_deriv c in
       let retexp, rule =
         match cvalue with
         | BoolVal true -> (t, EIfT)
         | BoolVal false -> (f, EIfF)
         | _ -> raise (EvalError "condition must be boolean: if")
       in
-      let retvalue, retderiv = eval_exp_to_deriv retexp in
+      let retvalue, retderiv = eval_to_deriv retexp in
       ( retvalue,
         {
           concl = EvalJ { exp; value = retvalue };
@@ -96,8 +91,8 @@ let rec eval_exp_to_deriv exp =
           premises = [ cderiv; retderiv ];
         } )
   | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexp, rexp) -> (
-      let lvalue, lderiv = eval_exp_to_deriv lexp
-      and rvalue, rderiv = eval_exp_to_deriv rexp in
+      let lvalue, lderiv = eval_to_deriv lexp
+      and rvalue, rderiv = eval_to_deriv rexp in
       match (lvalue, rvalue) with
       | IntVal li, IntVal ri ->
           let value, erule, bjudg, brule =

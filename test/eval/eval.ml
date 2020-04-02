@@ -1,5 +1,6 @@
 open OUnit2
-open Evalml.Syntax
+open Evalml.Exp
+open Evalml.Value
 open Evalml.Deriv
 
 let cases =
@@ -45,7 +46,7 @@ let cases =
   ]
 
 let eval_test value exp _ =
-  let evaled, _ = eval_exp_to_deriv exp in
+  let evaled, _ = eval_to_deriv exp in
   assert_equal ~printer:value_to_string value evaled
 
 let eval_tests =
