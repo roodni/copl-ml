@@ -14,6 +14,7 @@ type expr =
   | BOpExp of binOp * expr * expr
   | IfExp of expr * expr * expr
   | VarExp of var
+  | LetExp of var * expr * expr
 
 let rec expr_to_string = function
   | IntExp i -> string_of_int i
@@ -25,3 +26,6 @@ let rec expr_to_string = function
       Printf.sprintf "(if %s then %s else %s)" (expr_to_string c)
         (expr_to_string t) (expr_to_string f)
   | VarExp v -> var_to_string v
+  | LetExp (v, e1, e2) ->
+      Printf.sprintf "(let %s = %s in %s)" (var_to_string v) (expr_to_string e1)
+        (expr_to_string e2)

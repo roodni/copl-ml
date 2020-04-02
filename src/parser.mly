@@ -14,7 +14,9 @@ open Var
 %token TURNSTILE
 %token <string> ID
 %token EQ COMMA
+%token LET IN
 
+%nonassoc prec_let
 %nonassoc prec_if
 %left LT
 %left PLUS MINUS
@@ -43,6 +45,7 @@ value :
   | FALSE { BoolVal false }
 
 expr :
+  | LET id=ID EQ e1=expr IN e2=expr %prec prec_let { LetExp (Var id, e1, e2) }
   | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { IfExp (c, t, f) }
   | l=expr LT r=expr { BOpExp (LtOp, l, r) }
   | l=expr PLUS r=expr { BOpExp (PlusOp, l, r) }

@@ -18,6 +18,7 @@ type rule =
   | BLt
   | EVar1
   | EVar2
+  | ELet
 
 let rule_to_string = function
   | EInt -> "E-Int"
@@ -34,6 +35,7 @@ let rule_to_string = function
   | BLt -> "B-Lt"
   | EVar1 -> "E-Var1"
   | EVar2 -> "E-Var2"
+  | ELet -> "E-Let"
 
 type judgment =
   | EvalJ of { evalee : evaluatee; value : value }
@@ -146,3 +148,14 @@ let rec eval_to_deriv evalee =
               premises = [ premise ];
             } )
       | [] -> raise (EvalError ("Not found: " ^ var_to_string v)) )
+  | LetExp (v, e1, e2) ->
+      let value1, deriv1 = eval_to_deriv { evalee with expr = e1 } in
+      let value2, deriv2 =
+        eval_to_deriv { env = (v, value1) :: env; expr = e2 }
+      in
+      ( value2,
+        {
+          concl = EvalJ { evalee; value = value2 };
+          rule = ELet;
+          premises = [ deriv1; deriv2 ];
+        } )
