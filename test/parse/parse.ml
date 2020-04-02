@@ -1,54 +1,54 @@
 open OUnit2
+open Evalml
 open Evalml.Expr
-open Evalml.Evaluatee
-open Evalml.Var
 open Evalml.Value
-open Evalml.Env
+
+let var = Var.of_string
 
 (* 環境を含む *)
 let cases_env =
   [
     ( "Q34",
-      [ (Var "y", IntVal 2); (Var "x", IntVal 3) ],
-      VarExp (Var "x"),
+      [ (var "y", IntVal 2); (var "x", IntVal 3) ],
+      VarExp (var "x"),
       "x = 3, y = 2 |- x" );
     ( "Q35",
-      [ (Var "y", IntVal 4); (Var "x", BoolVal true) ],
+      [ (var "y", IntVal 4); (var "x", BoolVal true) ],
       IfExp
-        ( VarExp (Var "x"),
-          BOpExp (PlusOp, VarExp (Var "y"), IntExp 1),
-          BOpExp (MinusOp, VarExp (Var "y"), IntExp 1) ),
+        ( VarExp (var "x"),
+          BOpExp (PlusOp, VarExp (var "y"), IntExp 1),
+          BOpExp (MinusOp, VarExp (var "y"), IntExp 1) ),
       "x = true, y = 4 |- if x then y + 1 else y - 1" );
     ( "Q36",
       [],
       LetExp
-        ( Var "x",
+        ( var "x",
           BOpExp (PlusOp, IntExp 1, IntExp 2),
-          BOpExp (TimesOp, VarExp (Var "x"), IntExp 4) ),
+          BOpExp (TimesOp, VarExp (var "x"), IntExp 4) ),
       "|- let x = 1 + 2 in x * 4" );
     ( "Q39",
       [],
       LetExp
-        ( Var "x",
+        ( var "x",
           LetExp
-            ( Var "y",
+            ( var "y",
               BOpExp (MinusOp, IntExp 3, IntExp 2),
-              BOpExp (TimesOp, VarExp (Var "y"), VarExp (Var "y")) ),
+              BOpExp (TimesOp, VarExp (var "y"), VarExp (var "y")) ),
           LetExp
-            ( Var "y",
+            ( var "y",
               IntExp 4,
-              BOpExp (PlusOp, VarExp (Var "x"), VarExp (Var "y")) ) ),
+              BOpExp (PlusOp, VarExp (var "x"), VarExp (var "y")) ) ),
       "|- let x = let y = 3 - 2 in y * y in let y = 4 in x + y" );
   ]
 
 (* パースが正しいか調べる *)
 let parse_env_test env expr str _ =
-  let { env = env'; expr = expr' } =
+  let Evaluatee.{ env = env'; expr = expr' } =
     Evalml.Parser.toplevel Evalml.Lexer.main (Lexing.from_string str)
   in
   assert_equal
     ~printer:(fun (env, expr) ->
-      Printf.sprintf "%s |- %s" (env_to_string env) (expr_to_string expr))
+      Printf.sprintf "%s |- %s" (Env.to_string env) (expr_to_string expr))
     (env, expr) (env', expr')
 
 let parse_env_tests =
@@ -59,17 +59,17 @@ let parse_env_tests =
 
 (* evaleeを文字列化して再度パースし、一致するか調べる *)
 let evalee_to_string_test evalee _ =
-  let s = evaluatee_to_string evalee in
+  let s = Evaluatee.to_string evalee in
   let evalee' =
     Evalml.Parser.toplevel Evalml.Lexer.main (Lexing.from_string s)
   in
-  assert_equal ~printer:evaluatee_to_string evalee evalee'
+  assert_equal ~printer:Evaluatee.to_string evalee evalee'
 
 let evalee_to_string_tests =
   "evaluatee_to_string"
   >::: List.map (fun (title, evalee) -> title >:: evalee_to_string_test evalee)
        @@ List.map
-            (fun (title, env, expr, _) -> (title, { env; expr }))
+            (fun (title, env, expr, _) -> (title, Evaluatee.{ env; expr }))
             cases_env
 
 (* exprだけ (おもにEvalML1) *)
@@ -139,7 +139,7 @@ let cases_expr =
 
 (* パースが正しいか調べる *)
 let parse_expr_test expr str _ =
-  let { env = _; expr = parsed } =
+  let Evaluatee.{ env = _; expr = parsed } =
     Evalml.Parser.toplevel Evalml.Lexer.main (Lexing.from_string str)
   in
   assert_equal ~printer:expr_to_string expr parsed

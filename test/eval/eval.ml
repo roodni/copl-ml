@@ -1,47 +1,47 @@
 open OUnit2
+open Evalml
 open Evalml.Expr
 open Evalml.Value
-open Evalml.Evaluatee
-open Evalml.Deriv
-open Evalml.Var
 
 let eval_test value ?(env = []) expr _ =
-  let evaled, _ = eval_to_deriv { env; expr } in
+  let evaled, _ = Deriv.eval { env; expr } in
   assert_equal ~printer:value_to_string value evaled
+
+let var = Var.of_string
 
 let cases_env =
   [
     ( "Q34",
       IntVal 3,
-      [ (Var "y", IntVal 2); (Var "x", IntVal 3) ],
-      VarExp (Var "x") );
+      [ (var "y", IntVal 2); (var "x", IntVal 3) ],
+      VarExp (var "x") );
     ( "Q35",
       IntVal 5,
-      [ (Var "y", IntVal 4); (Var "x", BoolVal true) ],
+      [ (var "y", IntVal 4); (var "x", BoolVal true) ],
       IfExp
-        ( VarExp (Var "x"),
-          BOpExp (PlusOp, VarExp (Var "y"), IntExp 1),
-          BOpExp (MinusOp, VarExp (Var "y"), IntExp 1) ) );
+        ( VarExp (var "x"),
+          BOpExp (PlusOp, VarExp (var "y"), IntExp 1),
+          BOpExp (MinusOp, VarExp (var "y"), IntExp 1) ) );
     ( "Q36",
       IntVal 12,
       [],
       LetExp
-        ( Var "x",
+        ( var "x",
           BOpExp (PlusOp, IntExp 1, IntExp 2),
-          BOpExp (TimesOp, VarExp (Var "x"), IntExp 4) ) );
+          BOpExp (TimesOp, VarExp (var "x"), IntExp 4) ) );
     ( "Q39",
       IntVal 5,
       [],
       LetExp
-        ( Var "x",
+        ( var "x",
           LetExp
-            ( Var "y",
+            ( var "y",
               BOpExp (MinusOp, IntExp 3, IntExp 2),
-              BOpExp (TimesOp, VarExp (Var "y"), VarExp (Var "y")) ),
+              BOpExp (TimesOp, VarExp (var "y"), VarExp (var "y")) ),
           LetExp
-            ( Var "y",
+            ( var "y",
               IntExp 4,
-              BOpExp (PlusOp, VarExp (Var "x"), VarExp (Var "y")) ) ) );
+              BOpExp (PlusOp, VarExp (var "x"), VarExp (var "y")) ) ) );
   ]
 
 let eval_env_tests =

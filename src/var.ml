@@ -1,5 +1,7 @@
-type var = Var of string
+type t = Var of string
 
-let var_to_string v =
+let of_string s = Var s
+
+let to_string v =
   let (Var s) = v in
   s
