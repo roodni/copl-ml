@@ -19,6 +19,26 @@ let cases_env =
           BOpExp (PlusOp, VarExp (Var "y"), IntExp 1),
           BOpExp (MinusOp, VarExp (Var "y"), IntExp 1) ),
       "x = true, y = 4 |- if x then y + 1 else y - 1" );
+    ( "Q36",
+      [],
+      LetExp
+        ( Var "x",
+          BOpExp (PlusOp, IntExp 1, IntExp 2),
+          BOpExp (TimesOp, VarExp (Var "x"), IntExp 4) ),
+      "|- let x = 1 + 2 in x * 4" );
+    ( "Q39",
+      [],
+      LetExp
+        ( Var "x",
+          LetExp
+            ( Var "y",
+              BOpExp (MinusOp, IntExp 3, IntExp 2),
+              BOpExp (TimesOp, VarExp (Var "y"), VarExp (Var "y")) ),
+          LetExp
+            ( Var "y",
+              IntExp 4,
+              BOpExp (PlusOp, VarExp (Var "x"), VarExp (Var "y")) ) ),
+      "|- let x = let y = 3 - 2 in y * y in let y = 4 in x + y" );
   ]
 
 (* パースが正しいか調べる *)

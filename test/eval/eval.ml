@@ -22,6 +22,26 @@ let cases_env =
         ( VarExp (Var "x"),
           BOpExp (PlusOp, VarExp (Var "y"), IntExp 1),
           BOpExp (MinusOp, VarExp (Var "y"), IntExp 1) ) );
+    ( "Q36",
+      IntVal 12,
+      [],
+      LetExp
+        ( Var "x",
+          BOpExp (PlusOp, IntExp 1, IntExp 2),
+          BOpExp (TimesOp, VarExp (Var "x"), IntExp 4) ) );
+    ( "Q39",
+      IntVal 5,
+      [],
+      LetExp
+        ( Var "x",
+          LetExp
+            ( Var "y",
+              BOpExp (MinusOp, IntExp 3, IntExp 2),
+              BOpExp (TimesOp, VarExp (Var "y"), VarExp (Var "y")) ),
+          LetExp
+            ( Var "y",
+              IntExp 4,
+              BOpExp (PlusOp, VarExp (Var "x"), VarExp (Var "y")) ) ) );
   ]
 
 let eval_env_tests =
