@@ -1,6 +1,9 @@
 open Exp
 open Value
 
+(* open Env *)
+open Evaluatee
+
 type rule =
   | EInt
   | EBool
@@ -14,6 +17,8 @@ type rule =
   | BMinus
   | BTimes
   | BLt
+  | EVar1
+  | EVar2
 
 let rule_to_string = function
   | EInt -> "E-Int"
@@ -28,17 +33,21 @@ let rule_to_string = function
   | BMinus -> "B-Minus"
   | BTimes -> "B-Times"
   | BLt -> "B-Lt"
+  | EVar1 -> "E-Var1"
+  | EVar2 -> "E-Var2"
 
 type judgment =
-  | EvalJ of { exp : exp; value : value }
+  | EvalJ of { evalee : evaluatee; value : value }
   | PlusJ of int * int * int
   | MinusJ of int * int * int
   | TimesJ of int * int * int
   | LtJ of int * int * bool
 
 let judgment_to_string = function
-  | EvalJ { exp; value } ->
-      Printf.sprintf "%s evalto %s" (exp_to_string exp) (value_to_string value)
+  | EvalJ { evalee; value } ->
+      Printf.sprintf "%s evalto %s"
+        (evaluatee_to_string evalee)
+        (value_to_string value)
   | PlusJ (l, r, s) -> Printf.sprintf "%d plus %d is %d" l r s
   | MinusJ (l, r, d) -> Printf.sprintf "%d minus %d is %d" l r d
   | TimesJ (l, r, p) -> Printf.sprintf "%d times %d is %d" l r p
@@ -67,32 +76,33 @@ let rec output_deriv ?(indent = 0) ?(outchan = stdout) { premises; rule; concl }
 
 exception EvalError of string
 
-let rec eval_to_deriv exp =
+let rec eval_to_deriv evalee =
+  let { env = _; exp } = evalee in
   match exp with
   | IntExp i ->
       let value = IntVal i in
-      (value, { concl = EvalJ { exp; value }; rule = EInt; premises = [] })
+      (value, { concl = EvalJ { evalee; value }; rule = EInt; premises = [] })
   | BoolExp b ->
       let value = BoolVal b in
-      (value, { concl = EvalJ { exp; value }; rule = EBool; premises = [] })
+      (value, { concl = EvalJ { evalee; value }; rule = EBool; premises = [] })
   | IfExp (c, t, f) ->
-      let cvalue, cderiv = eval_to_deriv c in
+      let cvalue, cderiv = eval_to_deriv { evalee with exp = c } in
       let retexp, rule =
         match cvalue with
         | BoolVal true -> (t, EIfT)
         | BoolVal false -> (f, EIfF)
         | _ -> raise (EvalError "condition must be boolean: if")
       in
-      let retvalue, retderiv = eval_to_deriv retexp in
+      let retvalue, retderiv = eval_to_deriv { evalee with exp = retexp } in
       ( retvalue,
         {
-          concl = EvalJ { exp; value = retvalue };
+          concl = EvalJ { evalee; value = retvalue };
           rule;
           premises = [ cderiv; retderiv ];
         } )
   | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexp, rexp) -> (
-      let lvalue, lderiv = eval_to_deriv lexp
-      and rvalue, rderiv = eval_to_deriv rexp in
+      let lvalue, lderiv = eval_to_deriv { evalee with exp = lexp }
+      and rvalue, rderiv = eval_to_deriv { evalee with exp = rexp } in
       match (lvalue, rvalue) with
       | IntVal li, IntVal ri ->
           let value, erule, bjudg, brule =
@@ -112,7 +122,7 @@ let rec eval_to_deriv exp =
           in
           ( value,
             {
-              concl = EvalJ { exp; value };
+              concl = EvalJ { evalee; value };
               rule = erule;
               premises =
                 [
@@ -123,3 +133,4 @@ let rec eval_to_deriv exp =
           raise
             (EvalError ("both arguments must be integer: " ^ binop_to_string op))
       )
+  | _ -> assert false

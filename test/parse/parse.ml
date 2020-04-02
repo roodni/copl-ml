@@ -1,5 +1,6 @@
 open OUnit2
 open Evalml.Exp
+open Evalml.Evaluatee
 
 let cases =
   [
@@ -65,23 +66,25 @@ let cases =
       "1 + 2 * -3 + 4" );
   ]
 
-let parse_test exp str _ =
-  let parsed =
+let parse_exp_test exp str _ =
+  let { env = _; exp = parsed } =
     Evalml.Parser.toplevel Evalml.Lexer.main (Lexing.from_string str)
   in
   assert_equal ~printer:exp_to_s_string exp parsed
 
-let parse_tests =
+let parse_exp_tests =
   "parse"
-  >::: List.map (fun (title, exp, str) -> title >:: parse_test exp str) cases
+  >::: List.map
+         (fun (title, exp, str) -> title >:: parse_exp_test exp str)
+         cases
 
 (* expを文字列化して再度パースし、同じexpになるかどうか調べる *)
 let exp_to_string_test exp =
   let s = exp_to_string exp in
-  parse_test exp s
+  parse_exp_test exp s
 
 let exp_to_string_tests =
   "exp_to_string"
   >::: List.map (fun (title, exp, _) -> title >:: exp_to_string_test exp) cases
 
-let () = run_test_tt_main ("tests" >::: [ parse_tests; exp_to_string_tests ])
+let () = run_test_tt_main ("tests" >::: [ parse_exp_tests; exp_to_string_tests ])
