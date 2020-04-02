@@ -1,3 +1,5 @@
+open Var
+
 type binOp = PlusOp | MinusOp | TimesOp | LtOp
 
 let binop_to_string = function
@@ -11,6 +13,7 @@ type exp =
   | BoolExp of bool
   | BOpExp of binOp * exp * exp
   | IfExp of exp * exp * exp
+  | VarExp of var
 
 let rec exp_to_string = function
   | IntExp i -> string_of_int i
@@ -21,6 +24,7 @@ let rec exp_to_string = function
   | IfExp (c, t, f) ->
       Printf.sprintf "(if %s then %s else %s)" (exp_to_string c)
         (exp_to_string t) (exp_to_string f)
+  | VarExp v -> var_to_string v
 
 let rec exp_to_s_string = function
   | IntExp i -> string_of_int i
@@ -31,3 +35,4 @@ let rec exp_to_s_string = function
   | IfExp (c, t, f) ->
       Printf.sprintf "(if %s %s %s)" (exp_to_s_string c) (exp_to_s_string t)
         (exp_to_s_string f)
+  | VarExp v -> var_to_string v

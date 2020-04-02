@@ -17,8 +17,12 @@ rule main = parse
   | "+" { Parser.PLUS }
   | "-" { Parser.MINUS }
   | "*" { Parser.TIMES }
-  | ['a'-'z'] ['a'-'z' '0'-'9' '_' '\'']* {
+  | ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '\'']* {
       let id = Lexing.lexeme lexbuf in
-      List.assoc id reserved
+      try List.assoc id reserved
+      with Not_found -> Parser.ID id
     }
   | eof | ";;" { Parser.END }
+  | "|-" { Parser.TURNSTILE }
+  | "=" { Parser.EQ }
+  | "," { Parser.COMMA }
