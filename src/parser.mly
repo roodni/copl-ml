@@ -1,8 +1,6 @@
 %{
 open Expr
 open Value
-open Evaluatee
-open Var
 %}
 
 %token END
@@ -23,7 +21,7 @@ open Var
 %left TIMES
 
 %start toplevel
-%type <Evaluatee.evaluatee> toplevel
+%type <Evaluatee.t> toplevel
 %%
 
 toplevel :
@@ -36,7 +34,7 @@ env :
   | e=env COMMA a=assign { a :: e }
 
 assign :
-  | id=ID EQ value=value { (Var id, value) }
+  | id=ID EQ value=value { (Var.of_string id, value) }
 
 value :
   | i=INT { IntVal i }
@@ -45,7 +43,6 @@ value :
   | FALSE { BoolVal false }
 
 expr :
-  | LET id=ID EQ e1=expr IN e2=expr %prec prec_let { LetExp (Var id, e1, e2) }
   | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { IfExp (c, t, f) }
   | l=expr LT r=expr { BOpExp (LtOp, l, r) }
   | l=expr PLUS r=expr { BOpExp (PlusOp, l, r) }
@@ -56,4 +53,5 @@ expr :
   | TRUE { BoolExp true }
   | FALSE { BoolExp false }
   | LPAREN e=expr RPAREN { e }
-  | id=ID { VarExp (Var id) }
+  | id=ID { VarExp (Var.of_string id) }
+  | LET id=ID EQ e1=expr IN e2=expr %prec prec_let { LetExp (Var.of_string id, e1, e2) }

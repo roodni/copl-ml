@@ -1,7 +1,5 @@
 open Expr
 open Value
-open Evaluatee
-open Var
 
 type rule =
   | EInt
@@ -38,7 +36,7 @@ let rule_to_string = function
   | ELet -> "E-Let"
 
 type judgment =
-  | EvalJ of { evalee : evaluatee; value : value }
+  | EvalJ of { evalee : Evaluatee.t; value : value }
   | PlusJ of int * int * int
   | MinusJ of int * int * int
   | TimesJ of int * int * int
@@ -47,17 +45,16 @@ type judgment =
 let judgment_to_string = function
   | EvalJ { evalee; value } ->
       Printf.sprintf "%s evalto %s"
-        (evaluatee_to_string evalee)
+        (Evaluatee.to_string evalee)
         (value_to_string value)
   | PlusJ (l, r, s) -> Printf.sprintf "%d plus %d is %d" l r s
   | MinusJ (l, r, d) -> Printf.sprintf "%d minus %d is %d" l r d
   | TimesJ (l, r, p) -> Printf.sprintf "%d times %d is %d" l r p
   | LtJ (l, r, b) -> Printf.sprintf "%d less than %d is %b" l r b
 
-type deriv = { concl : judgment; rule : rule; premises : deriv list }
+type t = { concl : judgment; rule : rule; premises : t list }
 
-let rec output_deriv ?(indent = 0) ?(outchan = stdout) { premises; rule; concl }
-    =
+let rec output ?(indent = 0) ?(outchan = stdout) { premises; rule; concl } =
   let printf f = Printf.fprintf outchan f in
   let rec output_indent depth =
     if depth > 0 then (
@@ -69,16 +66,14 @@ let rec output_deriv ?(indent = 0) ?(outchan = stdout) { premises; rule; concl }
   if premises = [] then printf "{};\n"
   else (
     printf "{\n";
-    List.iter
-      (fun deriv -> output_deriv ~indent:(indent + 1) ~outchan deriv)
-      premises;
+    List.iter (fun deriv -> output ~indent:(indent + 1) ~outchan deriv) premises;
     output_indent indent;
     printf "};\n" )
 
 exception EvalError of string
 
-let rec eval_to_deriv evalee =
-  let { env; expr } = evalee in
+let rec eval evalee =
+  let Evaluatee.{ env; expr } = evalee in
   match expr with
   | IntExp i ->
       let value = IntVal i in
@@ -87,14 +82,14 @@ let rec eval_to_deriv evalee =
       let value = BoolVal b in
       (value, { concl = EvalJ { evalee; value }; rule = EBool; premises = [] })
   | IfExp (c, t, f) ->
-      let cvalue, cderiv = eval_to_deriv { evalee with expr = c } in
+      let cvalue, cderiv = eval { evalee with expr = c } in
       let retexpr, rule =
         match cvalue with
         | BoolVal true -> (t, EIfT)
         | BoolVal false -> (f, EIfF)
         | _ -> raise (EvalError "condition must be boolean: if")
       in
-      let retvalue, retderiv = eval_to_deriv { evalee with expr = retexpr } in
+      let retvalue, retderiv = eval { evalee with expr = retexpr } in
       ( retvalue,
         {
           concl = EvalJ { evalee; value = retvalue };
@@ -102,8 +97,8 @@ let rec eval_to_deriv evalee =
           premises = [ cderiv; retderiv ];
         } )
   | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr) -> (
-      let lvalue, lderiv = eval_to_deriv { evalee with expr = lexpr }
-      and rvalue, rderiv = eval_to_deriv { evalee with expr = rexpr } in
+      let lvalue, lderiv = eval { evalee with expr = lexpr }
+      and rvalue, rderiv = eval { evalee with expr = rexpr } in
       match (lvalue, rvalue) with
       | IntVal li, IntVal ri ->
           let value, erule, bjudg, brule =
@@ -140,19 +135,17 @@ let rec eval_to_deriv evalee =
           ( value,
             { concl = EvalJ { evalee; value }; rule = EVar1; premises = [] } )
       | (_, _) :: tail ->
-          let value, premise = eval_to_deriv { evalee with env = tail } in
+          let value, premise = eval { evalee with env = tail } in
           ( value,
             {
               concl = EvalJ { evalee; value };
               rule = EVar2;
               premises = [ premise ];
             } )
-      | [] -> raise (EvalError ("Not found: " ^ var_to_string v)) )
+      | [] -> raise (EvalError ("Not found: " ^ Var.to_string v)) )
   | LetExp (v, e1, e2) ->
-      let value1, deriv1 = eval_to_deriv { evalee with expr = e1 } in
-      let value2, deriv2 =
-        eval_to_deriv { env = (v, value1) :: env; expr = e2 }
-      in
+      let value1, deriv1 = eval { evalee with expr = e1 } in
+      let value2, deriv2 = eval { env = (v, value1) :: env; expr = e2 } in
       ( value2,
         {
           concl = EvalJ { evalee; value = value2 };
