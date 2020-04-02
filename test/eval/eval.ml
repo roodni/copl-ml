@@ -3,8 +3,35 @@ open Evalml.Expr
 open Evalml.Value
 open Evalml.Evaluatee
 open Evalml.Deriv
+open Evalml.Var
 
-let cases =
+let eval_test value ?(env = []) expr _ =
+  let evaled, _ = eval_to_deriv { env; expr } in
+  assert_equal ~printer:value_to_string value evaled
+
+let cases_env =
+  [
+    ( "Q34",
+      IntVal 3,
+      [ (Var "y", IntVal 2); (Var "x", IntVal 3) ],
+      VarExp (Var "x") );
+    ( "Q35",
+      IntVal 5,
+      [ (Var "y", IntVal 4); (Var "x", BoolVal true) ],
+      IfExp
+        ( VarExp (Var "x"),
+          BOpExp (PlusOp, VarExp (Var "y"), IntExp 1),
+          BOpExp (MinusOp, VarExp (Var "y"), IntExp 1) ) );
+  ]
+
+let eval_env_tests =
+  "eval env and expr"
+  >::: List.map
+         (fun (title, value, env, expr) -> title >:: eval_test value ~env expr)
+         cases_env
+
+(* exprだけ *)
+let cases_expr =
   [
     ("Q25", IntVal 8, BOpExp (PlusOp, IntExp 3, IntExp 5));
     ( "Q26",
@@ -46,14 +73,10 @@ let cases =
           IntExp 4 ) );
   ]
 
-let eval_expr_test value expr _ =
-  let evaled, _ = eval_to_deriv { env = []; expr } in
-  assert_equal ~printer:value_to_string value evaled
-
 let eval_expr_tests =
   "eval EvalML1"
   >::: List.map
-         (fun (title, value, exp) -> title >:: eval_expr_test value exp)
-         cases
+         (fun (title, value, exp) -> title >:: eval_test value exp)
+         cases_expr
 
-let () = run_test_tt_main eval_expr_tests
+let () = run_test_tt_main ("tests" >::: [ eval_expr_tests; eval_env_tests ])

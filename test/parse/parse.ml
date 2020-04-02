@@ -1,8 +1,59 @@
 open OUnit2
 open Evalml.Expr
 open Evalml.Evaluatee
+open Evalml.Var
+open Evalml.Value
+open Evalml.Env
 
-let cases =
+(* 環境を含む *)
+let cases_env =
+  [
+    ( "Q34",
+      [ (Var "y", IntVal 2); (Var "x", IntVal 3) ],
+      VarExp (Var "x"),
+      "x = 3, y = 2 |- x" );
+    ( "Q35",
+      [ (Var "y", IntVal 4); (Var "x", BoolVal true) ],
+      IfExp
+        ( VarExp (Var "x"),
+          BOpExp (PlusOp, VarExp (Var "y"), IntExp 1),
+          BOpExp (MinusOp, VarExp (Var "y"), IntExp 1) ),
+      "x = true, y = 4 |- if x then y + 1 else y - 1" );
+  ]
+
+(* パースが正しいか調べる *)
+let parse_env_test env expr str _ =
+  let { env = env'; expr = expr' } =
+    Evalml.Parser.toplevel Evalml.Lexer.main (Lexing.from_string str)
+  in
+  assert_equal
+    ~printer:(fun (env, expr) ->
+      Printf.sprintf "%s |- %s" (env_to_string env) (expr_to_string expr))
+    (env, expr) (env', expr')
+
+let parse_env_tests =
+  "parse env and expr"
+  >::: List.map
+         (fun (title, env, expr, str) -> title >:: parse_env_test env expr str)
+         cases_env
+
+(* evaleeを文字列化して再度パースし、一致するか調べる *)
+let evalee_to_string_test evalee _ =
+  let s = evaluatee_to_string evalee in
+  let evalee' =
+    Evalml.Parser.toplevel Evalml.Lexer.main (Lexing.from_string s)
+  in
+  assert_equal ~printer:evaluatee_to_string evalee evalee'
+
+let evalee_to_string_tests =
+  "evaluatee_to_string"
+  >::: List.map (fun (title, evalee) -> title >:: evalee_to_string_test evalee)
+       @@ List.map
+            (fun (title, env, expr, _) -> (title, { env; expr }))
+            cases_env
+
+(* exprだけ (おもにEvalML1) *)
+let cases_expr =
   [
     ("Q25", BOpExp (PlusOp, IntExp 3, IntExp 5), "3 + 5");
     ( "Q26",
@@ -66,6 +117,7 @@ let cases =
       "1 + 2 * -3 + 4" );
   ]
 
+(* パースが正しいか調べる *)
 let parse_expr_test expr str _ =
   let { env = _; expr = parsed } =
     Evalml.Parser.toplevel Evalml.Lexer.main (Lexing.from_string str)
@@ -73,19 +125,28 @@ let parse_expr_test expr str _ =
   assert_equal ~printer:expr_to_string expr parsed
 
 let parse_expr_tests =
-  "parse"
+  "parse expr"
   >::: List.map
          (fun (title, exp, str) -> title >:: parse_expr_test exp str)
-         cases
+         cases_expr
 
-(* expを文字列化して再度パースし、同じexpになるかどうか調べる *)
+(* exprを文字列化して再度パースし、同じexpになるかどうか調べる *)
 let expr_to_string_test exp =
   let s = expr_to_string exp in
   parse_expr_test exp s
 
 let expr_to_string_tests =
-  "exp_to_string"
-  >::: List.map (fun (title, exp, _) -> title >:: expr_to_string_test exp) cases
+  "expr_to_string"
+  >::: List.map
+         (fun (title, exp, _) -> title >:: expr_to_string_test exp)
+         cases_expr
 
 let () =
-  run_test_tt_main ("tests" >::: [ parse_expr_tests; expr_to_string_tests ])
+  run_test_tt_main
+    ( "tests"
+    >::: [
+           parse_expr_tests;
+           expr_to_string_tests;
+           parse_env_tests;
+           evalee_to_string_tests;
+         ] )

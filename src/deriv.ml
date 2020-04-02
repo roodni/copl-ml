@@ -1,8 +1,7 @@
 open Expr
 open Value
-
-(* open Env *)
 open Evaluatee
+open Var
 
 type rule =
   | EInt
@@ -77,7 +76,7 @@ let rec output_deriv ?(indent = 0) ?(outchan = stdout) { premises; rule; concl }
 exception EvalError of string
 
 let rec eval_to_deriv evalee =
-  let { env = _; expr } = evalee in
+  let { env; expr } = evalee in
   match expr with
   | IntExp i ->
       let value = IntVal i in
@@ -133,4 +132,17 @@ let rec eval_to_deriv evalee =
           raise
             (EvalError ("both arguments must be integer: " ^ binop_to_string op))
       )
-  | _ -> assert false
+  | VarExp v -> (
+      match env with
+      | (v', value) :: _ when v = v' ->
+          ( value,
+            { concl = EvalJ { evalee; value }; rule = EVar1; premises = [] } )
+      | (_, _) :: tail ->
+          let value, premise = eval_to_deriv { evalee with env = tail } in
+          ( value,
+            {
+              concl = EvalJ { evalee; value };
+              rule = EVar2;
+              premises = [ premise ];
+            } )
+      | [] -> raise (EvalError ("Not found: " ^ var_to_string v)) )
