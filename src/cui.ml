@@ -11,7 +11,7 @@ let eval_input_to_deriv () =
         exit 1
   in
   let _, deriv =
-    try eval_exp_to_deriv exp
+    try eval_to_deriv exp
     with EvalError e ->
       Printf.eprintf "%s\n" e;
       exit 1

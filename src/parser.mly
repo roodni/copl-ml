@@ -1,5 +1,5 @@
 %{
-open Syntax
+open Exp
 %}
 
 %token END
@@ -15,7 +15,7 @@ open Syntax
 %left TIMES
 
 %start toplevel
-%type <Syntax.exp> toplevel
+%type <Exp.exp> toplevel
 %%
 
 toplevel :
