@@ -5,6 +5,16 @@ open Evalml.Value
 
 let var = Var.of_string
 
+let varex s = VarExp (Var.of_string s)
+
+let plus (l, r) = BOpExp (PlusOp, l, r)
+
+let minus (l, r) = BOpExp (MinusOp, l, r)
+
+let times (l, r) = BOpExp (TimesOp, l, r)
+
+let lt (l, r) = BOpExp (LtOp, l, r)
+
 (* 環境を含む *)
 let cases_env =
   [
@@ -39,6 +49,43 @@ let cases_env =
               IntExp 4,
               BOpExp (PlusOp, VarExp (var "x"), VarExp (var "y")) ) ),
       "|- let x = let y = 3 - 2 in y * y in let y = 4 in x + y" );
+    ( "Q40",
+      [],
+      FunExp (var "x", plus (varex "x", IntExp 1)),
+      "|- fun x -> x + 1" );
+    ( "Q41",
+      [],
+      LetExp (var "y", IntExp 2, FunExp (var "x", plus (varex "x", varex "y"))),
+      "|- let y = 2 in fun x -> x + y" );
+    ( "Q42",
+      [],
+      LetExp
+        ( var "sq",
+          FunExp (var "x", times (varex "x", varex "x")),
+          plus (AppExp (varex "sq", IntExp 3), AppExp (varex "sq", IntExp 4)) ),
+      "|- let sq = fun x -> x * x in sq 3 + sq 4" );
+    ( "Q43",
+      [],
+      LetExp
+        ( var "sm",
+          FunExp
+            ( var "f",
+              plus (AppExp (varex "f", IntExp 3), AppExp (varex "f", IntExp 4))
+            ),
+          AppExp (varex "sm", FunExp (var "x", times (varex "x", varex "x"))) ),
+      "|- let sm = fun f -> f 3 + f 4 in sm (fun x -> x * x)" );
+    ( "Q44",
+      [],
+      LetExp
+        ( var "max",
+          FunExp
+            ( var "x",
+              FunExp
+                ( var "y",
+                  IfExp (lt (varex "x", varex "y"), varex "y", varex "x") ) ),
+          AppExp (AppExp (varex "max", IntExp 3), IntExp 5) ),
+      "|- let max = fun x -> fun y -> if x < y then y else x in max 3 5" );
+    ("1 + f 2", [], plus (IntExp 1, AppExp (varex "f", IntExp 2)), "1 + f 2");
   ]
 
 (* パースが正しいか調べる *)
@@ -48,7 +95,7 @@ let parse_env_test env expr str _ =
   in
   assert_equal
     ~printer:(fun (env, expr) ->
-      Printf.sprintf "%s |- %s" (Env.to_string env) (expr_to_string expr))
+      Printf.sprintf "%s |- %s" (env_to_string env) (expr_to_string expr))
     (env, expr) (env', expr')
 
 let parse_env_tests =
@@ -125,10 +172,8 @@ let cases_expr =
           BOpExp (LtOp, IntExp 1, BoolExp true),
           BOpExp (MinusOp, IntExp 3, BoolExp false) ),
       "if 3 < 4 then 1 < true else 3 - false" );
-    ("infix_plus prefix_minus", BOpExp (PlusOp, IntExp 1, IntExp ~-2), "1 + - 2");
-    ( "infix_minus prefix_minus",
-      BOpExp (MinusOp, IntExp 1, IntExp ~-2),
-      "1 - - 2" );
+    ("infix_plus prefix_minus", BOpExp (PlusOp, IntExp 1, IntExp ~-2), "1+-2");
+    ("infix_minus prefix_minus", BOpExp (MinusOp, IntExp 1, IntExp ~-2), "1--2");
     ( "plus times plus",
       BOpExp
         ( PlusOp,

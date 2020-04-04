@@ -152,3 +152,4 @@ let rec eval evalee =
           rule = ELet;
           premises = [ deriv1; deriv2 ];
         } )
+  | _ -> assert false

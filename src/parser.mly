@@ -13,12 +13,14 @@ open Value
 %token <string> ID
 %token EQ COMMA
 %token LET IN
+%token FUN RIGHTARROW
 
-%nonassoc prec_let
+%nonassoc prec_let prec_fun
 %nonassoc prec_if
 %left LT
 %left PLUS MINUS
 %left TIMES
+%nonassoc INT TRUE FALSE LPAREN ID
 
 %start toplevel
 %type <Evaluatee.t> toplevel
@@ -48,10 +50,14 @@ expr :
   | l=expr PLUS r=expr { BOpExp (PlusOp, l, r) }
   | l=expr MINUS r=expr { BOpExp (MinusOp, l, r) }
   | l=expr TIMES r=expr { BOpExp (TimesOp, l, r) }
+  | LET id=ID EQ e1=expr IN e2=expr %prec prec_let { LetExp (Var.of_string id, e1, e2) }
+  | FUN id=ID RIGHTARROW e=expr %prec prec_fun { FunExp (Var.of_string id, e) }
+  | l=expr r=simple { AppExp (l, r) }
+  | e=simple { e }
+
+%inline simple :
   | i=INT { IntExp i }
-  | MINUS i=INT { IntExp ~-i }
   | TRUE { BoolExp true }
   | FALSE { BoolExp false }
   | LPAREN e=expr RPAREN { e }
   | id=ID { VarExp (Var.of_string id) }
-  | LET id=ID EQ e1=expr IN e2=expr %prec prec_let { LetExp (Var.of_string id, e1, e2) }
