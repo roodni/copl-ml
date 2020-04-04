@@ -1,5 +1,6 @@
 open Expr
 open Value
+open Printf
 
 type rule =
   | EInt
@@ -17,6 +18,8 @@ type rule =
   | EVar1
   | EVar2
   | ELet
+  | EFun
+  | EApp
 
 let rule_to_string = function
   | EInt -> "E-Int"
@@ -34,6 +37,8 @@ let rule_to_string = function
   | EVar1 -> "E-Var1"
   | EVar2 -> "E-Var2"
   | ELet -> "E-Let"
+  | EFun -> "E-Fun"
+  | EApp -> "E-App"
 
 type judgment =
   | EvalJ of { evalee : Evaluatee.t; value : value }
@@ -44,18 +49,18 @@ type judgment =
 
 let judgment_to_string = function
   | EvalJ { evalee; value } ->
-      Printf.sprintf "%s evalto %s"
+      sprintf "%s evalto %s"
         (Evaluatee.to_string evalee)
         (value_to_string value)
-  | PlusJ (l, r, s) -> Printf.sprintf "%d plus %d is %d" l r s
-  | MinusJ (l, r, d) -> Printf.sprintf "%d minus %d is %d" l r d
-  | TimesJ (l, r, p) -> Printf.sprintf "%d times %d is %d" l r p
-  | LtJ (l, r, b) -> Printf.sprintf "%d less than %d is %b" l r b
+  | PlusJ (l, r, s) -> sprintf "%d plus %d is %d" l r s
+  | MinusJ (l, r, d) -> sprintf "%d minus %d is %d" l r d
+  | TimesJ (l, r, p) -> sprintf "%d times %d is %d" l r p
+  | LtJ (l, r, b) -> sprintf "%d less than %d is %b" l r b
 
 type t = { concl : judgment; rule : rule; premises : t list }
 
 let rec output ?(indent = 0) ?(outchan = stdout) { premises; rule; concl } =
-  let printf f = Printf.fprintf outchan f in
+  let printf f = fprintf outchan f in
   let rec output_indent depth =
     if depth > 0 then (
       printf "  ";
@@ -127,6 +132,19 @@ let rec eval evalee =
         let value1, deriv1 = eval { evalee with expr = e1 } in
         let value2, deriv2 = eval { env = (v, value1) :: env; expr = e2 } in
         (value2, ELet, [ deriv1; deriv2 ])
-    | _ -> assert false
+    | FunExp (v, e) -> (FunVal (env, v, e), EFun, [])
+    | AppExp (e1, e2) -> (
+        let fval, fderiv = eval { evalee with expr = e1 } in
+        match fval with
+        | FunVal (fenv, fvar, fexpr) ->
+            let aval, aderiv = eval { evalee with expr = e2 } in
+            let value, deriv =
+              eval { env = (fvar, aval) :: fenv; expr = fexpr }
+            in
+            (value, EApp, [ fderiv; aderiv; deriv ])
+        | _ ->
+            raise
+              (EvalError (sprintf "%s cannot be applied" (value_to_string fval)))
+        )
   in
   (value, { concl = EvalJ { evalee; value }; rule; premises })
