@@ -86,6 +86,16 @@ let cases_env =
           AppExp (AppExp (varex "max", IntExp 3), IntExp 5) ),
       "|- let max = fun x -> fun y -> if x < y then y else x in max 3 5" );
     ("1 + f 2", [], plus (IntExp 1, AppExp (varex "f", IntExp 2)), "1 + f 2");
+    ( "fun env",
+      [
+        ( var "f",
+          FunVal
+            ( [ (var "y", IntVal 2); (var "x", IntVal 1) ],
+              var "z",
+              plus (plus (varex "x", varex "y"), varex "z") ) );
+      ],
+      AppExp (varex "f", IntExp 3),
+      "f = (x = 1, y = 2)[fun z -> x + y + z] |- f 3" );
   ]
 
 (* パースが正しいか調べる *)

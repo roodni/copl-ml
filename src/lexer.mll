@@ -31,3 +31,5 @@ rule main = parse
   | "=" { Parser.EQ }
   | "," { Parser.COMMA }
   | "->" { Parser.RIGHTARROW }
+  | "[" { Parser.LBRACKET }
+  | "]" { Parser.RBRACKET }
