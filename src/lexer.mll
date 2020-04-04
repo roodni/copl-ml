@@ -1,5 +1,6 @@
 {
 let reserved = [
+  ("evalto", Parser.END);
   ("true", Parser.TRUE);
   ("false", Parser.FALSE);
   ("if", Parser.IF);
@@ -7,7 +8,7 @@ let reserved = [
   ("else", Parser.ELSE);
   ("let", Parser.LET);
   ("in", Parser.IN);
-  ("fun", Parser.FUN)
+  ("fun", Parser.FUN);
 ]
 }
 
