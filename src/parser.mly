@@ -14,6 +14,7 @@ open Value
 %token EQ COMMA
 %token LET IN
 %token FUN RIGHTARROW
+%token LBRACKET RBRACKET
 
 %nonassoc prec_let prec_fun
 %nonassoc prec_if
@@ -43,6 +44,7 @@ value :
   | MINUS i=INT { IntVal ~-i }
   | TRUE { BoolVal true }
   | FALSE { BoolVal false }
+  | LPAREN en=env RPAREN LBRACKET FUN id=ID RIGHTARROW ex=expr RBRACKET { FunVal (en, Var.of_string id, ex) }
 
 expr :
   | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { IfExp (c, t, f) }
