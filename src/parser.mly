@@ -55,7 +55,7 @@ expr :
   | l=expr r=simple { AppExp (l, r) }
   | e=simple { e }
 
-%inline simple :
+simple :
   | i=INT { IntExp i }
   | TRUE { BoolExp true }
   | FALSE { BoolExp false }
