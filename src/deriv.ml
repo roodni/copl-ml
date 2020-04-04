@@ -74,82 +74,59 @@ exception EvalError of string
 
 let rec eval evalee =
   let Evaluatee.{ env; expr } = evalee in
-  match expr with
-  | IntExp i ->
-      let value = IntVal i in
-      (value, { concl = EvalJ { evalee; value }; rule = EInt; premises = [] })
-  | BoolExp b ->
-      let value = BoolVal b in
-      (value, { concl = EvalJ { evalee; value }; rule = EBool; premises = [] })
-  | IfExp (c, t, f) ->
-      let cvalue, cderiv = eval { evalee with expr = c } in
-      let retexpr, rule =
-        match cvalue with
-        | BoolVal true -> (t, EIfT)
-        | BoolVal false -> (f, EIfF)
-        | _ -> raise (EvalError "condition must be boolean: if")
-      in
-      let retvalue, retderiv = eval { evalee with expr = retexpr } in
-      ( retvalue,
-        {
-          concl = EvalJ { evalee; value = retvalue };
-          rule;
-          premises = [ cderiv; retderiv ];
-        } )
-  | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr) -> (
-      let lvalue, lderiv = eval { evalee with expr = lexpr }
-      and rvalue, rderiv = eval { evalee with expr = rexpr } in
-      match (lvalue, rvalue) with
-      | IntVal li, IntVal ri ->
-          let value, erule, bjudg, brule =
-            match op with
-            | PlusOp ->
-                let i = li + ri in
-                (IntVal i, EPlus, PlusJ (li, ri, i), BPlus)
-            | MinusOp ->
-                let i = li - ri in
-                (IntVal i, EMinus, MinusJ (li, ri, i), BMinus)
-            | TimesOp ->
-                let i = li * ri in
-                (IntVal i, ETimes, TimesJ (li, ri, i), BTimes)
-            | LtOp ->
-                let b = li < ri in
-                (BoolVal b, ELt, LtJ (li, ri, b), BLt)
-          in
-          ( value,
-            {
-              concl = EvalJ { evalee; value };
-              rule = erule;
-              premises =
-                [
-                  lderiv; rderiv; { concl = bjudg; rule = brule; premises = [] };
-                ];
-            } )
-      | _ ->
-          raise
-            (EvalError ("both arguments must be integer: " ^ binop_to_string op))
-      )
-  | VarExp v -> (
-      match env with
-      | (v', value) :: _ when v = v' ->
-          ( value,
-            { concl = EvalJ { evalee; value }; rule = EVar1; premises = [] } )
-      | (_, _) :: tail ->
-          let value, premise = eval { evalee with env = tail } in
-          ( value,
-            {
-              concl = EvalJ { evalee; value };
-              rule = EVar2;
-              premises = [ premise ];
-            } )
-      | [] -> raise (EvalError ("Not found: " ^ Var.to_string v)) )
-  | LetExp (v, e1, e2) ->
-      let value1, deriv1 = eval { evalee with expr = e1 } in
-      let value2, deriv2 = eval { env = (v, value1) :: env; expr = e2 } in
-      ( value2,
-        {
-          concl = EvalJ { evalee; value = value2 };
-          rule = ELet;
-          premises = [ deriv1; deriv2 ];
-        } )
-  | _ -> assert false
+  let value, rule, premises =
+    match expr with
+    | IntExp i -> (IntVal i, EInt, [])
+    | BoolExp b -> (BoolVal b, EBool, [])
+    | IfExp (c, t, f) ->
+        let cvalue, cderiv = eval { evalee with expr = c } in
+        let retexpr, rule =
+          match cvalue with
+          | BoolVal true -> (t, EIfT)
+          | BoolVal false -> (f, EIfF)
+          | _ -> raise (EvalError "condition must be boolean: if")
+        in
+        let retvalue, retderiv = eval { evalee with expr = retexpr } in
+        (retvalue, rule, [ cderiv; retderiv ])
+    | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr) -> (
+        let lvalue, lderiv = eval { evalee with expr = lexpr }
+        and rvalue, rderiv = eval { evalee with expr = rexpr } in
+        match (lvalue, rvalue) with
+        | IntVal li, IntVal ri ->
+            let value, erule, bjudg, brule =
+              match op with
+              | PlusOp ->
+                  let i = li + ri in
+                  (IntVal i, EPlus, PlusJ (li, ri, i), BPlus)
+              | MinusOp ->
+                  let i = li - ri in
+                  (IntVal i, EMinus, MinusJ (li, ri, i), BMinus)
+              | TimesOp ->
+                  let i = li * ri in
+                  (IntVal i, ETimes, TimesJ (li, ri, i), BTimes)
+              | LtOp ->
+                  let b = li < ri in
+                  (BoolVal b, ELt, LtJ (li, ri, b), BLt)
+            in
+            ( value,
+              erule,
+              [ lderiv; rderiv; { concl = bjudg; rule = brule; premises = [] } ]
+            )
+        | _ ->
+            raise
+              (EvalError
+                 ("both arguments must be integer: " ^ binop_to_string op)) )
+    | VarExp v -> (
+        match env with
+        | (v', value) :: _ when v = v' -> (value, EVar1, [])
+        | (_, _) :: tail ->
+            let value, premise = eval { evalee with env = tail } in
+            (value, EVar2, [ premise ])
+        | [] -> raise (EvalError ("Not found: " ^ Var.to_string v)) )
+    | LetExp (v, e1, e2) ->
+        let value1, deriv1 = eval { evalee with expr = e1 } in
+        let value2, deriv2 = eval { env = (v, value1) :: env; expr = e2 } in
+        (value2, ELet, [ deriv1; deriv2 ])
+    | _ -> assert false
+  in
+  (value, { concl = EvalJ { evalee; value }; rule; premises })
