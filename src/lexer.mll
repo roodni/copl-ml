@@ -7,12 +7,13 @@ let reserved = [
   ("else", Parser.ELSE);
   ("let", Parser.LET);
   ("in", Parser.IN);
+  ("fun", Parser.FUN)
 ]
 }
 
 rule main = parse
   | [' ' '\t' '\n' '\r']+ { main lexbuf }
-  | ['0'-'9']+ { Parser.INT (int_of_string (Lexing.lexeme lexbuf)) }
+  | ['-']? ['0'-'9']+ { Parser.INT (int_of_string (Lexing.lexeme lexbuf)) }
   | "(" { Parser.LPAREN }
   | ")" { Parser.RPAREN }
   | "<" { Parser.LT }
@@ -28,3 +29,4 @@ rule main = parse
   | "|-" { Parser.TURNSTILE }
   | "=" { Parser.EQ }
   | "," { Parser.COMMA }
+  | "->" { Parser.RIGHTARROW }

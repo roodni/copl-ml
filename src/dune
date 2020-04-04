@@ -2,6 +2,7 @@
  (name evalml))
 
 (menhir
- (modules parser))
+ (modules parser)
+ (flags --explain))
 
 (ocamllex lexer)
