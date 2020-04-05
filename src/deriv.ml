@@ -20,6 +20,8 @@ type rule =
   | ELet
   | EFun
   | EApp
+  | ELetRec
+  | EAppRec
 
 let rule_to_string = function
   | EInt -> "E-Int"
@@ -39,6 +41,8 @@ let rule_to_string = function
   | ELet -> "E-Let"
   | EFun -> "E-Fun"
   | EApp -> "E-App"
+  | ELetRec -> "E-LetRec"
+  | EAppRec -> "E-AppRec"
 
 type judgment =
   | EvalJ of { evalee : Evaluatee.t; value : value }
@@ -134,18 +138,27 @@ let rec eval evalee =
         (value2, ELet, [ deriv1; deriv2 ])
     | FunExp (v, e) -> (FunVal (env, v, e), EFun, [])
     | AppExp (e1, e2) -> (
-        let fval, fderiv = eval { evalee with expr = e1 } in
+        let fval, fderiv = eval { evalee with expr = e1 }
+        and aval, aderiv = eval { evalee with expr = e2 } in
         match fval with
-        | FunVal (fenv, fvar, fexpr) ->
-            let aval, aderiv = eval { evalee with expr = e2 } in
+        | FunVal (fenv, avar, fexpr) ->
             let value, deriv =
-              eval { env = (fvar, aval) :: fenv; expr = fexpr }
+              eval { env = (avar, aval) :: fenv; expr = fexpr }
             in
             (value, EApp, [ fderiv; aderiv; deriv ])
+        | RecFunVal (fenv, fvar, avar, fexpr) ->
+            let value, deriv =
+              eval { env = (avar, aval) :: (fvar, fval) :: fenv; expr = fexpr }
+            in
+            (value, EAppRec, [ fderiv; aderiv; deriv ])
         | _ ->
             raise
               (EvalError (sprintf "%s cannot be applied" (value_to_string fval)))
         )
-    | _ -> assert false
+    | LetRecExp (f, a, e1, e2) ->
+        let value, premise =
+          eval { env = (f, RecFunVal (env, f, a, e1)) :: env; expr = e2 }
+        in
+        (value, ELetRec, [ premise ])
   in
   (value, { concl = EvalJ { evalee; value }; rule; premises })
