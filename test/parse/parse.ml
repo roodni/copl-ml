@@ -15,6 +15,8 @@ let times (l, r) = BOpExp (TimesOp, l, r)
 
 let lt (l, r) = BOpExp (LtOp, l, r)
 
+let call (s, e) = AppExp (varex s, e)
+
 (* 環境を含む *)
 let cases_env =
   [
@@ -96,6 +98,34 @@ let cases_env =
       ],
       AppExp (varex "f", IntExp 3),
       "f = (x = 1, y = 2)[fun z -> x + y + z] |- f 3" );
+    ( "Q50",
+      [],
+      LetRecExp
+        ( var "fact",
+          var "n",
+          IfExp
+            ( lt (varex "n", IntExp 2),
+              IntExp 1,
+              times (varex "n", call ("fact", minus (varex "n", IntExp 1))) ),
+          call ("fact", IntExp 3) ),
+      "|- let rec fact = fun n -> if n < 2 then 1 else n * fact (n - 1) in \
+       fact 3" );
+    ( "rec fun env",
+      [
+        ( var "fact",
+          RecFunVal
+            ( [],
+              var "fact",
+              var "n",
+              IfExp
+                ( lt (varex "n", IntExp 2),
+                  IntExp 1,
+                  times (varex "n", call ("fact", minus (varex "n", IntExp 1)))
+                ) ) );
+      ],
+      call ("fact", IntExp 3),
+      "fact=()[rec fact = fun n -> if n < 2 then 1 else n * fact (n - 1)] |- \
+       fact 3" );
   ]
 
 (* パースが正しいか調べる *)

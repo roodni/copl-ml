@@ -9,6 +9,7 @@ let reserved = [
   ("let", Parser.LET);
   ("in", Parser.IN);
   ("fun", Parser.FUN);
+  ("rec", Parser.REC)
 ]
 }
 

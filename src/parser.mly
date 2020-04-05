@@ -15,8 +15,9 @@ open Value
 %token LET IN
 %token FUN RIGHTARROW
 %token LBRACKET RBRACKET
+%token REC
 
-%nonassoc prec_let prec_fun
+%nonassoc prec_let prec_fun prec_letrec
 %nonassoc prec_if
 %left LT
 %left PLUS MINUS
@@ -44,7 +45,10 @@ value :
   | MINUS i=INT { IntVal ~-i }
   | TRUE { BoolVal true }
   | FALSE { BoolVal false }
-  | LPAREN en=env RPAREN LBRACKET FUN id=ID RIGHTARROW ex=expr RBRACKET { FunVal (en, Var.of_string id, ex) }
+  | LPAREN en=env RPAREN LBRACKET FUN id=ID RIGHTARROW ex=expr RBRACKET
+      { FunVal (en, Var.of_string id, ex) }
+  | LPAREN en=env RPAREN LBRACKET REC f=ID EQ FUN a=ID RIGHTARROW ex=expr RBRACKET
+      { RecFunVal (en, Var.of_string f, Var.of_string a, ex) }
 
 expr :
   | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { IfExp (c, t, f) }
@@ -56,6 +60,8 @@ expr :
   | FUN id=ID RIGHTARROW e=expr %prec prec_fun { FunExp (Var.of_string id, e) }
   | l=expr r=simple { AppExp (l, r) }
   | e=simple { e }
+  | LET REC f=ID EQ FUN a=ID RIGHTARROW e1=expr IN e2=expr %prec prec_letrec
+      { LetRecExp (Var.of_string f, Var.of_string a, e1, e2) }
 
 simple :
   | i=INT { IntExp i }

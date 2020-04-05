@@ -17,6 +17,7 @@ type expr =
   | LetExp of Var.t * expr * expr
   | FunExp of Var.t * expr
   | AppExp of expr * expr
+  | LetRecExp of Var.t * Var.t * expr * expr
 
 let rec expr_to_string = function
   | IntExp i -> string_of_int i
@@ -34,3 +35,6 @@ let rec expr_to_string = function
   | FunExp (v, e) ->
       sprintf "(fun %s -> %s)" (Var.to_string v) (expr_to_string e)
   | AppExp (l, r) -> sprintf "(%s %s)" (expr_to_string l) (expr_to_string r)
+  | LetRecExp (f, x, e1, e2) ->
+      sprintf "(let rec %s = fun %s -> %s in %s)" (Var.to_string f)
+        (Var.to_string x) (expr_to_string e1) (expr_to_string e2)
