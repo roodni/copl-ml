@@ -146,5 +146,6 @@ let rec eval evalee =
             raise
               (EvalError (sprintf "%s cannot be applied" (value_to_string fval)))
         )
+    | _ -> assert false
   in
   (value, { concl = EvalJ { evalee; value }; rule; premises })

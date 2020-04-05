@@ -1,7 +1,11 @@
 open Expr
 open Printf
 
-type value = IntVal of int | BoolVal of bool | FunVal of env * Var.t * expr
+type value =
+  | IntVal of int
+  | BoolVal of bool
+  | FunVal of env * Var.t * expr
+  | RecFunVal of env * Var.t * Var.t * expr
 
 and env = (Var.t * value) list
 
@@ -11,6 +15,9 @@ let rec value_to_string = function
   | FunVal (env, v, expr) ->
       sprintf "(%s)[fun %s -> %s]" (env_to_string env) (Var.to_string v)
         (expr_to_string expr)
+  | RecFunVal (env, f, a, expr) ->
+      sprintf "(%s)[rec %s = fun %s -> %s]" (env_to_string env)
+        (Var.to_string f) (Var.to_string a) (expr_to_string expr)
 
 and env_to_string env =
   let assign_to_string (var, value) =
