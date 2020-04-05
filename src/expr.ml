@@ -14,10 +14,10 @@ type expr =
   | BOpExp of binOp * expr * expr
   | IfExp of expr * expr * expr
   | VarExp of Var.t
-  | LetExp of Var.t * expr * expr
-  | FunExp of Var.t * expr
+  | LetExp of expr * expr
+  | FunExp of expr
   | AppExp of expr * expr
-  | LetRecExp of Var.t * Var.t * expr * expr
+  | LetRecExp of expr * expr
 
 let rec expr_to_string = function
   | IntExp i -> string_of_int i
@@ -29,12 +29,10 @@ let rec expr_to_string = function
       sprintf "(if %s then %s else %s)" (expr_to_string c) (expr_to_string t)
         (expr_to_string f)
   | VarExp v -> Var.to_string v
-  | LetExp (v, e1, e2) ->
-      sprintf "(let %s = %s in %s)" (Var.to_string v) (expr_to_string e1)
-        (expr_to_string e2)
-  | FunExp (v, e) ->
-      sprintf "(fun %s -> %s)" (Var.to_string v) (expr_to_string e)
+  | LetExp (e1, e2) ->
+      sprintf "(let . = %s in %s)" (expr_to_string e1) (expr_to_string e2)
+  | FunExp e -> sprintf "(fun . -> %s)" (expr_to_string e)
   | AppExp (l, r) -> sprintf "(%s %s)" (expr_to_string l) (expr_to_string r)
-  | LetRecExp (f, x, e1, e2) ->
-      sprintf "(let rec %s = fun %s -> %s in %s)" (Var.to_string f)
-        (Var.to_string x) (expr_to_string e1) (expr_to_string e2)
+  | LetRecExp (e1, e2) ->
+      sprintf "(let rec . = fun . -> %s in %s)" (expr_to_string e1)
+        (expr_to_string e2)

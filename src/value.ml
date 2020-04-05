@@ -4,27 +4,23 @@ open Printf
 type value =
   | IntVal of int
   | BoolVal of bool
-  | FunVal of env * Var.t * expr
-  | RecFunVal of env * Var.t * Var.t * expr
+  | FunVal of env * expr
+  | RecFunVal of env * expr
 
-and env = (Var.t * value) list
+and env = value list
 
 let rec value_to_string = function
   | IntVal i -> string_of_int i
   | BoolVal b -> string_of_bool b
-  | FunVal (env, v, expr) ->
-      sprintf "(%s)[fun %s -> %s]" (env_to_string env) (Var.to_string v)
+  | FunVal (env, expr) ->
+      sprintf "(%s)[fun . -> %s]" (env_to_string env) (expr_to_string expr)
+  | RecFunVal (env, expr) ->
+      sprintf "(%s)[rec . = fun . -> %s]" (env_to_string env)
         (expr_to_string expr)
-  | RecFunVal (env, f, a, expr) ->
-      sprintf "(%s)[rec %s = fun %s -> %s]" (env_to_string env)
-        (Var.to_string f) (Var.to_string a) (expr_to_string expr)
 
 and env_to_string env =
-  let assign_to_string (var, value) =
-    Printf.sprintf "%s = %s" (Var.to_string var) (value_to_string value)
-  in
   match env with
   | [] -> ""
-  | [ assign ] -> assign_to_string assign
-  | assign :: env' ->
-      Printf.sprintf "%s, %s" (env_to_string env') (assign_to_string assign)
+  | [ v ] -> value_to_string v
+  | v :: env' ->
+      Printf.sprintf "%s, %s" (env_to_string env') (value_to_string v)

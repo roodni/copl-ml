@@ -15,8 +15,7 @@ type rule =
   | BMinus
   | BTimes
   | BLt
-  | EVar1
-  | EVar2
+  | EVar
   | ELet
   | EFun
   | EApp
@@ -36,8 +35,7 @@ let rule_to_string = function
   | BMinus -> "B-Minus"
   | BTimes -> "B-Times"
   | BLt -> "B-Lt"
-  | EVar1 -> "E-Var1"
-  | EVar2 -> "E-Var2"
+  | EVar -> "E-Var"
   | ELet -> "E-Let"
   | EFun -> "E-Fun"
   | EApp -> "E-App"
@@ -125,39 +123,37 @@ let rec eval evalee =
             raise
               (EvalError
                  ("both arguments must be integer: " ^ binop_to_string op)) )
-    | VarExp v -> (
-        match env with
-        | (v', value) :: _ when v = v' -> (value, EVar1, [])
-        | (_, _) :: tail ->
-            let value, premise = eval { evalee with env = tail } in
-            (value, EVar2, [ premise ])
-        | [] -> raise (EvalError ("Not found: " ^ Var.to_string v)) )
-    | LetExp (v, e1, e2) ->
+    | VarExp v ->
+        let index = Var.to_int v - 1 in
+        ( ( try List.nth env index
+            with Failure _ ->
+              raise (EvalError ("Not found: " ^ Var.to_string v)) ),
+          EVar,
+          [] )
+    | LetExp (e1, e2) ->
         let value1, deriv1 = eval { evalee with expr = e1 } in
-        let value2, deriv2 = eval { env = (v, value1) :: env; expr = e2 } in
+        let value2, deriv2 = eval { env = value1 :: env; expr = e2 } in
         (value2, ELet, [ deriv1; deriv2 ])
-    | FunExp (v, e) -> (FunVal (env, v, e), EFun, [])
+    | FunExp e -> (FunVal (env, e), EFun, [])
     | AppExp (e1, e2) -> (
         let fval, fderiv = eval { evalee with expr = e1 }
         and aval, aderiv = eval { evalee with expr = e2 } in
         match fval with
-        | FunVal (fenv, avar, fexpr) ->
-            let value, deriv =
-              eval { env = (avar, aval) :: fenv; expr = fexpr }
-            in
+        | FunVal (fenv, fexpr) ->
+            let value, deriv = eval { env = aval :: fenv; expr = fexpr } in
             (value, EApp, [ fderiv; aderiv; deriv ])
-        | RecFunVal (fenv, fvar, avar, fexpr) ->
+        | RecFunVal (fenv, fexpr) ->
             let value, deriv =
-              eval { env = (avar, aval) :: (fvar, fval) :: fenv; expr = fexpr }
+              eval { env = aval :: fval :: fenv; expr = fexpr }
             in
             (value, EAppRec, [ fderiv; aderiv; deriv ])
         | _ ->
             raise
               (EvalError (sprintf "%s cannot be applied" (value_to_string fval)))
         )
-    | LetRecExp (f, a, e1, e2) ->
+    | LetRecExp (e1, e2) ->
         let value, premise =
-          eval { env = (f, RecFunVal (env, f, a, e1)) :: env; expr = e2 }
+          eval { env = RecFunVal (env, e1) :: env; expr = e2 }
         in
         (value, ELetRec, [ premise ])
   in

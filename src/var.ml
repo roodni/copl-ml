@@ -1,7 +1,7 @@
-type t = Var of string
+type t = Var of int
 
-let of_string s = Var s
+let of_int i = Var i
 
-let to_string v =
-  let (Var s) = v in
-  s
+let to_int (Var i) = i
+
+let to_string (Var i) = "#" ^ string_of_int i
