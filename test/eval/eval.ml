@@ -19,6 +19,8 @@ let times (l, r) = BOpExp (TimesOp, l, r)
 
 let lt (l, r) = BOpExp (LtOp, l, r)
 
+let call (s, e) = AppExp (varex s, e)
+
 let cases_env =
   [
     ( "Q34",
@@ -91,6 +93,17 @@ let cases_env =
                 ( var "y",
                   IfExp (lt (varex "x", varex "y"), varex "y", varex "x") ) ),
           AppExp (AppExp (varex "max", IntExp 3), IntExp 5) ) );
+    ( "Q50",
+      IntVal 6,
+      [],
+      LetRecExp
+        ( var "fact",
+          var "n",
+          IfExp
+            ( lt (varex "n", IntExp 2),
+              IntExp 1,
+              times (varex "n", call ("fact", minus (varex "n", IntExp 1))) ),
+          call ("fact", IntExp 3) ) );
   ]
 
 let eval_env_tests =
