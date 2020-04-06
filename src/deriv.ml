@@ -22,6 +22,9 @@ type rule =
   | EApp
   | ELetRec
   | EAppRec
+  | EVar
+  | EMult
+  | BMult
 
 let rule_to_string = function
   | EInt -> "E-Int"
@@ -43,6 +46,9 @@ let rule_to_string = function
   | EApp -> "E-App"
   | ELetRec -> "E-LetRec"
   | EAppRec -> "E-AppRec"
+  | EVar -> "E-Var"
+  | EMult -> "E-Mult"
+  | BMult -> "B-Mult"
 
 type judgment =
   | EvalJ of { evalee : Evaluatee.t; value : value }
@@ -81,84 +87,99 @@ let rec output ?(indent = 0) ?(outchan = stdout) { premises; rule; concl } =
 
 exception EvalError of string
 
-let rec eval evalee =
-  let Evaluatee.{ env; expr } = evalee in
-  let value, rule, premises =
-    match expr with
-    | IntExp i -> (IntVal i, EInt, [])
-    | BoolExp b -> (BoolVal b, EBool, [])
-    | IfExp (c, t, f) ->
-        let cvalue, cderiv = eval { evalee with expr = c } in
-        let retexpr, rule =
-          match cvalue with
-          | BoolVal true -> (t, EIfT)
-          | BoolVal false -> (f, EIfF)
-          | _ -> raise (EvalError "condition must be boolean: if")
-        in
-        let retvalue, retderiv = eval { evalee with expr = retexpr } in
-        (retvalue, rule, [ cderiv; retderiv ])
-    | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr) -> (
-        let lvalue, lderiv = eval { evalee with expr = lexpr }
-        and rvalue, rderiv = eval { evalee with expr = rexpr } in
-        match (lvalue, rvalue) with
-        | IntVal li, IntVal ri ->
-            let value, erule, bjudg, brule =
-              match op with
-              | PlusOp ->
-                  let i = li + ri in
-                  (IntVal i, EPlus, PlusJ (li, ri, i), BPlus)
-              | MinusOp ->
-                  let i = li - ri in
-                  (IntVal i, EMinus, MinusJ (li, ri, i), BMinus)
-              | TimesOp ->
-                  let i = li * ri in
-                  (IntVal i, ETimes, TimesJ (li, ri, i), BTimes)
-              | LtOp ->
-                  let b = li < ri in
-                  (BoolVal b, ELt, LtJ (li, ri, b), BLt)
-            in
-            ( value,
-              erule,
-              [ lderiv; rderiv; { concl = bjudg; rule = brule; premises = [] } ]
-            )
-        | _ ->
-            raise
-              (EvalError
-                 ("both arguments must be integer: " ^ binop_to_string op)) )
-    | VarExp v -> (
-        match env with
-        | (v', value) :: _ when v = v' -> (value, EVar1, [])
-        | (_, _) :: tail ->
-            let value, premise = eval { evalee with env = tail } in
-            (value, EVar2, [ premise ])
-        | [] -> raise (EvalError ("Not found: " ^ Var.to_string v)) )
-    | LetExp (v, e1, e2) ->
-        let value1, deriv1 = eval { evalee with expr = e1 } in
-        let value2, deriv2 = eval { env = (v, value1) :: env; expr = e2 } in
-        (value2, ELet, [ deriv1; deriv2 ])
-    | FunExp (v, e) -> (FunVal (env, v, e), EFun, [])
-    | AppExp (e1, e2) -> (
-        let fval, fderiv = eval { evalee with expr = e1 }
-        and aval, aderiv = eval { evalee with expr = e2 } in
-        match fval with
-        | FunVal (fenv, avar, fexpr) ->
-            let value, deriv =
-              eval { env = (avar, aval) :: fenv; expr = fexpr }
-            in
-            (value, EApp, [ fderiv; aderiv; deriv ])
-        | RecFunVal (fenv, fvar, avar, fexpr) ->
-            let value, deriv =
-              eval { env = (avar, aval) :: (fvar, fval) :: fenv; expr = fexpr }
-            in
-            (value, EAppRec, [ fderiv; aderiv; deriv ])
-        | _ ->
-            raise
-              (EvalError (sprintf "%s cannot be applied" (value_to_string fval)))
-        )
-    | LetRecExp (f, a, e1, e2) ->
-        let value, premise =
-          eval { env = (f, RecFunVal (env, f, a, e1)) :: env; expr = e2 }
-        in
-        (value, ELetRec, [ premise ])
+let eval ?(single_step_var = false) ?(use_mult = false) evalee =
+  let rec eval evalee =
+    let Evaluatee.{ env; expr } = evalee in
+    let value, rule, premises =
+      match expr with
+      | IntExp i -> (IntVal i, EInt, [])
+      | BoolExp b -> (BoolVal b, EBool, [])
+      | IfExp (c, t, f) ->
+          let cvalue, cderiv = eval { evalee with expr = c } in
+          let retexpr, rule =
+            match cvalue with
+            | BoolVal true -> (t, EIfT)
+            | BoolVal false -> (f, EIfF)
+            | _ -> raise (EvalError "condition must be boolean: if")
+          in
+          let retvalue, retderiv = eval { evalee with expr = retexpr } in
+          (retvalue, rule, [ cderiv; retderiv ])
+      | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr) -> (
+          let lvalue, lderiv = eval { evalee with expr = lexpr }
+          and rvalue, rderiv = eval { evalee with expr = rexpr } in
+          match (lvalue, rvalue) with
+          | IntVal li, IntVal ri ->
+              let value, erule, bjudg, brule =
+                match op with
+                | PlusOp ->
+                    let i = li + ri in
+                    (IntVal i, EPlus, PlusJ (li, ri, i), BPlus)
+                | MinusOp ->
+                    let i = li - ri in
+                    (IntVal i, EMinus, MinusJ (li, ri, i), BMinus)
+                | TimesOp ->
+                    let i = li * ri in
+                    let erule, brule =
+                      if use_mult then (EMult, BMult) else (ETimes, BTimes)
+                    in
+                    (IntVal i, erule, TimesJ (li, ri, i), brule)
+                | LtOp ->
+                    let b = li < ri in
+                    (BoolVal b, ELt, LtJ (li, ri, b), BLt)
+              in
+              ( value,
+                erule,
+                [
+                  lderiv; rderiv; { concl = bjudg; rule = brule; premises = [] };
+                ] )
+          | _ ->
+              raise
+                (EvalError
+                   ("both arguments must be integer: " ^ binop_to_string op)) )
+      | VarExp v -> (
+          if single_step_var then
+            ( ( try List.assoc v env
+                with Not_found ->
+                  raise (EvalError ("Not found: " ^ Var.to_string v)) ),
+              EVar,
+              [] )
+          else
+            match env with
+            | (v', value) :: _ when v = v' -> (value, EVar1, [])
+            | (_, _) :: tail ->
+                let value, premise = eval { evalee with env = tail } in
+                (value, EVar2, [ premise ])
+            | [] -> raise (EvalError ("Not found: " ^ Var.to_string v)) )
+      | LetExp (v, e1, e2) ->
+          let value1, deriv1 = eval { evalee with expr = e1 } in
+          let value2, deriv2 = eval { env = (v, value1) :: env; expr = e2 } in
+          (value2, ELet, [ deriv1; deriv2 ])
+      | FunExp (v, e) -> (FunVal (env, v, e), EFun, [])
+      | AppExp (e1, e2) -> (
+          let fval, fderiv = eval { evalee with expr = e1 }
+          and aval, aderiv = eval { evalee with expr = e2 } in
+          match fval with
+          | FunVal (fenv, avar, fexpr) ->
+              let value, deriv =
+                eval { env = (avar, aval) :: fenv; expr = fexpr }
+              in
+              (value, EApp, [ fderiv; aderiv; deriv ])
+          | RecFunVal (fenv, fvar, avar, fexpr) ->
+              let value, deriv =
+                eval
+                  { env = (avar, aval) :: (fvar, fval) :: fenv; expr = fexpr }
+              in
+              (value, EAppRec, [ fderiv; aderiv; deriv ])
+          | _ ->
+              raise
+                (EvalError
+                   (sprintf "%s cannot be applied" (value_to_string fval))) )
+      | LetRecExp (f, a, e1, e2) ->
+          let value, premise =
+            eval { env = (f, RecFunVal (env, f, a, e1)) :: env; expr = e2 }
+          in
+          (value, ELetRec, [ premise ])
+    in
+    (value, { concl = EvalJ { evalee; value }; rule; premises })
   in
-  (value, { concl = EvalJ { evalee; value }; rule; premises })
+  eval evalee
