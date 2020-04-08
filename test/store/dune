@@ -1,0 +1,3 @@
+(test
+ (name store)
+ (libraries evalml ounit2))
