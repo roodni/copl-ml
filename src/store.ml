@@ -6,6 +6,8 @@ type t = {
   binds : (Loc.t * Value.value) list;
 }
 
+exception Invalid_reference
+
 let empty = { pooled_locs = []; name_count = 1; binds = [] }
 
 let rec make_ref t v =
@@ -26,11 +28,12 @@ let assign t loc value =
   let rec f = function
     | (loc', _) :: rest when loc' = loc -> (loc, value) :: rest
     | bind :: rest -> bind :: f rest
-    | [] -> assert false
+    | [] -> raise Invalid_reference
   in
   { t with binds = f t.binds }
 
-let deref t loc = List.assoc loc t.binds
+let deref t loc =
+  try List.assoc loc t.binds with Not_found -> raise Invalid_reference
 
 let to_string t =
   let bind_to_string (loc, value) =

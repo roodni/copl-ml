@@ -1,20 +1,22 @@
+open Printf
+
 let eval_input_to_deriv () =
   let lexbuf = Lexing.from_channel stdin in
   let toplevel =
     try Parser.toplevel Lexer.main lexbuf with
     | Failure e ->
-        Printf.eprintf "%s\n" e;
+        eprintf "%s\n" e;
         exit 1
     | Parser.Error ->
-        Printf.eprintf "parsing: error\n";
+        eprintf "syntax error\n";
         exit 1
   in
   let system = System.EvalRefML3 in
   let evalee = Toplevel.to_evaluatee toplevel in
   let evaled, deriv =
     try Deriv.eval system evalee
-    with Deriv.EvalError e ->
-      Printf.eprintf "%s\n" e;
+    with Deriv.EvalError (er, ex) ->
+      eprintf "%s: %s\n" er (Expr.expr_to_string ex);
       exit 1
   in
   let deriv =
@@ -25,10 +27,10 @@ let eval_input_to_deriv () =
           let loc =
             try Parser.loc_name Lexer.main lexbuf with
             | Failure e ->
-                Printf.eprintf "%s\n" e;
+                eprintf "%s\n" e;
                 exit 1
             | Parser.Error ->
-                Printf.eprintf "parsing: error2\n";
+                eprintf "syntax error\n";
                 exit 1
           in
           loc :: get_locs (num - 1)

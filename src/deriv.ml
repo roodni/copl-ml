@@ -91,11 +91,12 @@ let rec output ?(indent = 0) ?(outchan = stdout) { premises; rule; concl } =
     output_indent indent;
     printf "};\n" )
 
-exception EvalError of string
+exception EvalError of string * Expr.expr
 
 let eval system evalee =
   let rec eval evalee =
     let Evaluatee.{ store; env; expr } = evalee in
+    let error s = raise @@ EvalError (s, expr) in
     let evaled, rule, premises =
       match expr with
       | IntExp i -> ((IntVal i, store), EInt, [])
@@ -106,7 +107,7 @@ let eval system evalee =
             match cvalue with
             | BoolVal true -> (t, EIfT)
             | BoolVal false -> (f, EIfF)
-            | _ -> raise (EvalError "condition must be boolean: if")
+            | _ -> error "Condition must be bool"
           in
           let ret, retderiv = eval { evalee with store; expr = retexpr } in
           (ret, rule, [ cderiv; retderiv ])
@@ -143,10 +144,7 @@ let eval system evalee =
                 [
                   lderiv; rderiv; { concl = bjudg; rule = brule; premises = [] };
                 ] )
-          | _ ->
-              raise
-              @@ EvalError
-                   ("both arguments must be integer: " ^ binop_to_string op) )
+          | _ -> error "Both arguments must be int" )
       | BOpExp (AssignOp, lexpr, rexpr) -> (
           let (lvalue, store), lderiv = eval { evalee with expr = lexpr } in
           let (rvalue, store), rderiv =
@@ -154,18 +152,19 @@ let eval system evalee =
           in
           match lvalue with
           | LocVal loc ->
-              ( (rvalue, Store.assign store loc rvalue),
-                EAssign,
-                [ lderiv; rderiv ] )
-          | _ -> raise @@ EvalError (expr_to_string lexpr ^ " is not loc: :=") )
+              let store =
+                try Store.assign store loc rvalue
+                with Store.Invalid_reference -> error "Invalid reference"
+              in
+              ((rvalue, store), EAssign, [ lderiv; rderiv ])
+          | _ -> error (sprintf "%s is not loc" (expr_to_string lexpr)) )
       | VarExp v -> (
           match system with
           | System.EvalRefML3 ->
               (* 1 step var *)
               let value =
                 try List.assoc v env
-                with Not_found ->
-                  raise @@ EvalError ("Undeclared variable: " ^ Var.to_string v)
+                with Not_found -> error "Undeclared variable"
               in
               ((value, store), EVar, [])
           | _ -> (
@@ -175,9 +174,7 @@ let eval system evalee =
               | (_, _) :: tail ->
                   let evaled, premise = eval { evalee with env = tail } in
                   (evaled, EVar2, [ premise ])
-              | [] ->
-                  raise @@ EvalError ("Undeclared variable: " ^ Var.to_string v)
-              ) )
+              | [] -> error "Undeclared variable" ) )
       | LetExp (v, e1, e2) ->
           let (value1, store), deriv1 = eval { evalee with expr = e1 } in
           let (value2, store), deriv2 =
@@ -204,10 +201,7 @@ let eval system evalee =
                   }
               in
               (evaled, EAppRec, [ fderiv; aderiv; deriv ])
-          | _ ->
-              raise
-              @@ EvalError (sprintf "%s cannot be applied" (expr_to_string e1))
-          )
+          | _ -> error (sprintf "%s cannot be applied" (expr_to_string e1)) )
       | LetRecExp (f, a, e1, e2) ->
           let evaled, premise =
             eval
@@ -225,8 +219,13 @@ let eval system evalee =
       | DerefExp e -> (
           let (value, store), premise = eval { evalee with expr = e } in
           match value with
-          | LocVal loc -> ((Store.deref store loc, store), EDeref, [ premise ])
-          | _ -> raise @@ EvalError (expr_to_string e ^ "is not loc: !") )
+          | LocVal loc ->
+              let value =
+                try Store.deref store loc
+                with Store.Invalid_reference -> error "Invalid reference"
+              in
+              ((value, store), EDeref, [ premise ])
+          | _ -> error (sprintf "%s must be loc" (expr_to_string e)) )
     in
     (evaled, { concl = EvalJ { evalee; evaled }; rule; premises })
   in

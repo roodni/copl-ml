@@ -1,5 +1,7 @@
 type t
 
+exception Invalid_reference
+
 val empty : t
 
 val create : Loc.t list -> Value.value list -> t
