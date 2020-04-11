@@ -4,4 +4,6 @@ val to_string : t -> string
 
 val of_value : Value.value -> t
 
-val to_value : t -> Value.value
+val value : t -> Value.value
+
+val store : t -> Store.t

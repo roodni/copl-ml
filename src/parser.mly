@@ -33,6 +33,8 @@ open Value
 
 %start toplevel
 %type <Toplevel.t> toplevel
+%start loc_name
+%type <Loc.t> loc_name
 %%
 
 toplevel :
@@ -94,3 +96,7 @@ simple :
   | LPAREN e=expr RPAREN { e }
   | v=VAR { VarExp v }
   | DEREF e=simple { DerefExp e }
+
+loc_name :
+  | value SLASH l=LOC EQ { l }
+  | value COMMA l=LOC EQ { l }

@@ -45,3 +45,5 @@ let to_string t =
   binds_to_string t.binds
 
 let is_empty { binds; _ } = binds = []
+
+let binds t = t.binds

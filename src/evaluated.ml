@@ -6,4 +6,6 @@ let to_string (value, store) =
 
 let of_value value = (value, Store.empty)
 
-let to_value t = fst t
+let value t = fst t
+
+let store t = snd t

@@ -13,3 +13,5 @@ val deref : t -> Loc.t -> Value.value
 val to_string : t -> string
 
 val is_empty : t -> bool
+
+val binds : t -> (Loc.t * Value.value) list

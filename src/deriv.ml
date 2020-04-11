@@ -93,7 +93,7 @@ let rec output ?(indent = 0) ?(outchan = stdout) { premises; rule; concl } =
 
 exception EvalError of string
 
-let eval ?(single_step_var = true) ?(use_mult = false) evalee =
+let eval system evalee =
   let rec eval evalee =
     let Evaluatee.{ store; env; expr } = evalee in
     let evaled, rule, premises =
@@ -128,7 +128,9 @@ let eval ?(single_step_var = true) ?(use_mult = false) evalee =
                 | TimesOp ->
                     let i = li * ri in
                     let erule, brule =
-                      if use_mult then (EMult, BMult) else (ETimes, BTimes)
+                      match system with
+                      | System.EvalRefML3 -> (EMult, BMult)
+                      | _ -> (ETimes, BTimes)
                     in
                     (IntVal i, erule, TimesJ (li, ri, i), brule)
                 | LtOp ->
@@ -157,22 +159,25 @@ let eval ?(single_step_var = true) ?(use_mult = false) evalee =
                 [ lderiv; rderiv ] )
           | _ -> raise @@ EvalError (expr_to_string lexpr ^ " is not loc: :=") )
       | VarExp v -> (
-          if single_step_var then
-            let value =
-              try List.assoc v env
-              with Not_found ->
-                raise @@ EvalError ("Undeclared variable: " ^ Var.to_string v)
-            in
-            ((value, store), EVar, [])
-          else
-            match env with
-            | (v', value) :: _ when v = v' ->
-                (Evaluated.of_value value, EVar1, [])
-            | (_, _) :: tail ->
-                let evaled, premise = eval { evalee with env = tail } in
-                (evaled, EVar2, [ premise ])
-            | [] ->
-                raise @@ EvalError ("Undeclared variable: " ^ Var.to_string v) )
+          match system with
+          | System.EvalRefML3 ->
+              (* 1 step var *)
+              let value =
+                try List.assoc v env
+                with Not_found ->
+                  raise @@ EvalError ("Undeclared variable: " ^ Var.to_string v)
+              in
+              ((value, store), EVar, [])
+          | _ -> (
+              match env with
+              | (v', value) :: _ when v = v' ->
+                  (Evaluated.of_value value, EVar1, [])
+              | (_, _) :: tail ->
+                  let evaled, premise = eval { evalee with env = tail } in
+                  (evaled, EVar2, [ premise ])
+              | [] ->
+                  raise @@ EvalError ("Undeclared variable: " ^ Var.to_string v)
+              ) )
       | LetExp (v, e1, e2) ->
           let (value1, store), deriv1 = eval { evalee with expr = e1 } in
           let (value2, store), deriv2 =

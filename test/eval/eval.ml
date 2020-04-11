@@ -3,10 +3,10 @@ open Evalml
 open Evalml.Expr
 open Evalml.Value
 
-let eval_test title value ?(stores = (Store.empty, Store.empty)) ?(env = [])
-    expr =
+let eval_test system title value ?(stores = (Store.empty, Store.empty))
+    ?(env = []) expr =
   let expected = Evaluated.to_string (value, fst stores) in
-  let evaled, _ = Deriv.eval { store = snd stores; env; expr } in
+  let evaled, _ = Deriv.eval system { store = snd stores; env; expr } in
   title >:: fun _ ->
   assert_equal ~printer:(fun x -> x) expected (Evaluated.to_string evaled)
 
@@ -90,7 +90,9 @@ let tests_refml3 =
              let locs, values = List.split bs in
              Store.create locs values
            in
-           eval_test title value ~stores:(s_create s2, s_create s1) ~env expr)
+           eval_test EvalRefML3 title value
+             ~stores:(s_create s2, s_create s1)
+             ~env expr)
          cases_refml3
 
 let cases_ml3 =
@@ -181,7 +183,8 @@ let cases_ml3 =
 let tests_ml3 =
   "ML3"
   >::: List.map
-         (fun (title, value, env, expr) -> eval_test title value ~env expr)
+         (fun (title, value, env, expr) ->
+           eval_test EvalML3 title value ~env expr)
          cases_ml3
 
 let cases_ml1 =
@@ -228,6 +231,8 @@ let cases_ml1 =
 
 let tests_ml1 =
   "ML1"
-  >::: List.map (fun (title, value, exp) -> eval_test title value exp) cases_ml1
+  >::: List.map
+         (fun (title, value, exp) -> eval_test EvalML1 title value exp)
+         cases_ml1
 
 let () = run_test_tt_main ("tests" >::: [ tests_ml1; tests_ml3; tests_refml3 ])
