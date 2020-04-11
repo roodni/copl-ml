@@ -25,6 +25,9 @@ type rule =
   | EVar
   | EMult
   | BMult
+  | EAssign
+  | ERef
+  | EDeref
 
 let rule_to_string = function
   | EInt -> "E-Int"
@@ -49,19 +52,22 @@ let rule_to_string = function
   | EVar -> "E-Var"
   | EMult -> "E-Mult"
   | BMult -> "B-Mult"
+  | EAssign -> "E-Assign"
+  | ERef -> "E-Ref"
+  | EDeref -> "E-Deref"
 
 type judgment =
-  | EvalJ of { evalee : Evaluatee.t; value : value }
+  | EvalJ of { evalee : Evaluatee.t; evaled : Evaluated.t }
   | PlusJ of int * int * int
   | MinusJ of int * int * int
   | TimesJ of int * int * int
   | LtJ of int * int * bool
 
 let judgment_to_string = function
-  | EvalJ { evalee; value } ->
+  | EvalJ { evalee; evaled } ->
       sprintf "%s evalto %s"
         (Evaluatee.to_string evalee)
-        (value_to_string value)
+        (Evaluated.to_string evaled)
   | PlusJ (l, r, s) -> sprintf "%d plus %d is %d" l r s
   | MinusJ (l, r, d) -> sprintf "%d minus %d is %d" l r d
   | TimesJ (l, r, p) -> sprintf "%d times %d is %d" l r p
@@ -87,26 +93,28 @@ let rec output ?(indent = 0) ?(outchan = stdout) { premises; rule; concl } =
 
 exception EvalError of string
 
-let eval ?(single_step_var = false) ?(use_mult = false) evalee =
+let eval ?(single_step_var = true) ?(use_mult = false) evalee =
   let rec eval evalee =
-    let Evaluatee.{ env; expr } = evalee in
-    let value, rule, premises =
+    let Evaluatee.{ store; env; expr } = evalee in
+    let evaled, rule, premises =
       match expr with
-      | IntExp i -> (IntVal i, EInt, [])
-      | BoolExp b -> (BoolVal b, EBool, [])
+      | IntExp i -> ((IntVal i, store), EInt, [])
+      | BoolExp b -> ((BoolVal b, store), EBool, [])
       | IfExp (c, t, f) ->
-          let cvalue, cderiv = eval { evalee with expr = c } in
+          let (cvalue, store), cderiv = eval { evalee with expr = c } in
           let retexpr, rule =
             match cvalue with
             | BoolVal true -> (t, EIfT)
             | BoolVal false -> (f, EIfF)
             | _ -> raise (EvalError "condition must be boolean: if")
           in
-          let retvalue, retderiv = eval { evalee with expr = retexpr } in
-          (retvalue, rule, [ cderiv; retderiv ])
+          let ret, retderiv = eval { evalee with store; expr = retexpr } in
+          (ret, rule, [ cderiv; retderiv ])
       | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr) -> (
-          let lvalue, lderiv = eval { evalee with expr = lexpr }
-          and rvalue, rderiv = eval { evalee with expr = rexpr } in
+          let (lvalue, store), lderiv = eval { evalee with expr = lexpr } in
+          let (rvalue, store), rderiv =
+            eval { evalee with store; expr = rexpr }
+          in
           match (lvalue, rvalue) with
           | IntVal li, IntVal ri ->
               let value, erule, bjudg, brule =
@@ -126,60 +134,95 @@ let eval ?(single_step_var = false) ?(use_mult = false) evalee =
                 | LtOp ->
                     let b = li < ri in
                     (BoolVal b, ELt, LtJ (li, ri, b), BLt)
+                | _ -> assert false
               in
-              ( value,
+              ( (value, store),
                 erule,
                 [
                   lderiv; rderiv; { concl = bjudg; rule = brule; premises = [] };
                 ] )
           | _ ->
               raise
-                (EvalError
-                   ("both arguments must be integer: " ^ binop_to_string op)) )
+              @@ EvalError
+                   ("both arguments must be integer: " ^ binop_to_string op) )
+      | BOpExp (AssignOp, lexpr, rexpr) -> (
+          let (lvalue, store), lderiv = eval { evalee with expr = lexpr } in
+          let (rvalue, store), rderiv =
+            eval { evalee with store; expr = rexpr }
+          in
+          match lvalue with
+          | LocVal loc ->
+              ( (rvalue, Store.assign store loc rvalue),
+                EAssign,
+                [ lderiv; rderiv ] )
+          | _ -> raise @@ EvalError (expr_to_string lexpr ^ " is not loc: :=") )
       | VarExp v -> (
           if single_step_var then
-            ( ( try List.assoc v env
-                with Not_found ->
-                  raise (EvalError ("Not found: " ^ Var.to_string v)) ),
-              EVar,
-              [] )
+            let value =
+              try List.assoc v env
+              with Not_found ->
+                raise @@ EvalError ("Undeclared variable: " ^ Var.to_string v)
+            in
+            ((value, store), EVar, [])
           else
             match env with
-            | (v', value) :: _ when v = v' -> (value, EVar1, [])
+            | (v', value) :: _ when v = v' ->
+                (Evaluated.of_value value, EVar1, [])
             | (_, _) :: tail ->
-                let value, premise = eval { evalee with env = tail } in
-                (value, EVar2, [ premise ])
-            | [] -> raise (EvalError ("Not found: " ^ Var.to_string v)) )
+                let evaled, premise = eval { evalee with env = tail } in
+                (evaled, EVar2, [ premise ])
+            | [] ->
+                raise @@ EvalError ("Undeclared variable: " ^ Var.to_string v) )
       | LetExp (v, e1, e2) ->
-          let value1, deriv1 = eval { evalee with expr = e1 } in
-          let value2, deriv2 = eval { env = (v, value1) :: env; expr = e2 } in
-          (value2, ELet, [ deriv1; deriv2 ])
-      | FunExp (v, e) -> (FunVal (env, v, e), EFun, [])
+          let (value1, store), deriv1 = eval { evalee with expr = e1 } in
+          let (value2, store), deriv2 =
+            eval { store; env = (v, value1) :: env; expr = e2 }
+          in
+          ((value2, store), ELet, [ deriv1; deriv2 ])
+      | FunExp (v, e) -> ((FunVal (env, v, e), store), EFun, [])
       | AppExp (e1, e2) -> (
-          let fval, fderiv = eval { evalee with expr = e1 }
-          and aval, aderiv = eval { evalee with expr = e2 } in
+          let (fval, store), fderiv = eval { evalee with expr = e1 } in
+          let (aval, store), aderiv = eval { evalee with store; expr = e2 } in
           match fval with
           | FunVal (fenv, avar, fexpr) ->
-              let value, deriv =
-                eval { env = (avar, aval) :: fenv; expr = fexpr }
+              let evaled, deriv =
+                eval { store; env = (avar, aval) :: fenv; expr = fexpr }
               in
-              (value, EApp, [ fderiv; aderiv; deriv ])
+              (evaled, EApp, [ fderiv; aderiv; deriv ])
           | RecFunVal (fenv, fvar, avar, fexpr) ->
-              let value, deriv =
+              let evaled, deriv =
                 eval
-                  { env = (avar, aval) :: (fvar, fval) :: fenv; expr = fexpr }
+                  {
+                    store;
+                    env = (avar, aval) :: (fvar, fval) :: fenv;
+                    expr = fexpr;
+                  }
               in
-              (value, EAppRec, [ fderiv; aderiv; deriv ])
+              (evaled, EAppRec, [ fderiv; aderiv; deriv ])
           | _ ->
               raise
-                (EvalError
-                   (sprintf "%s cannot be applied" (value_to_string fval))) )
+              @@ EvalError (sprintf "%s cannot be applied" (expr_to_string e1))
+          )
       | LetRecExp (f, a, e1, e2) ->
-          let value, premise =
-            eval { env = (f, RecFunVal (env, f, a, e1)) :: env; expr = e2 }
+          let evaled, premise =
+            eval
+              {
+                evalee with
+                env = (f, RecFunVal (env, f, a, e1)) :: env;
+                expr = e2;
+              }
           in
-          (value, ELetRec, [ premise ])
+          (evaled, ELetRec, [ premise ])
+      | RefExp e ->
+          let (value, store), premise = eval { evalee with expr = e } in
+          let loc, store = Store.make_ref store value in
+          ((LocVal loc, store), ERef, [ premise ])
+      | DerefExp e -> (
+          let (value, store), premise = eval { evalee with expr = e } in
+          match value with
+          | LocVal loc -> ((Store.deref store loc, store), EDeref, [ premise ])
+          | _ -> raise @@ EvalError (expr_to_string e ^ "is not loc: !") )
     in
-    (value, { concl = EvalJ { evalee; value }; rule; premises })
+    (evaled, { concl = EvalJ { evalee; evaled }; rule; premises })
   in
   eval evalee

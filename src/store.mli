@@ -1,5 +1,7 @@
 type t
 
+val empty : t
+
 val create : Loc.t list -> Value.value list -> t
 
 val make_ref : t -> Value.value -> Loc.t * t

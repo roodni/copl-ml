@@ -3,9 +3,19 @@ open Evalml
 open Evalml.Expr
 open Evalml.Value
 
-let var = Var.of_string
-
-let varex s = VarExp (Var.of_string s)
+let parse_and_reparse_test title ?(store = Store.empty) ?(env = []) expr str =
+  let expected = Evaluatee.{ store; env; expr } in
+  let parse s =
+    Toplevel.to_evaluatee @@ Parser.toplevel Lexer.main (Lexing.from_string s)
+  in
+  title
+  >::: [
+         ( "parse" >:: fun _ ->
+           assert_equal ~printer:Evaluatee.to_string expected (parse str) );
+         ( "reparse" >:: fun _ ->
+           assert_equal ~printer:Evaluatee.to_string expected
+             (Evaluatee.to_string expected |> parse) );
+       ]
 
 let plus (l, r) = BOpExp (PlusOp, l, r)
 
@@ -15,10 +25,82 @@ let times (l, r) = BOpExp (TimesOp, l, r)
 
 let lt (l, r) = BOpExp (LtOp, l, r)
 
+let assign (l, r) = BOpExp (AssignOp, l, r)
+
+let var = Var.of_string
+
+let varex s = VarExp (var s)
+
+let varint (v, i) = (var v, IntVal i)
+
 let call (s, e) = AppExp (varex s, e)
 
+let lexp (v, e1, e2) = LetExp (var v, e1, e2)
+
+let loc = Loc.of_string
+
+let locv s = LocVal (loc s)
+
+let locint (l, i) = (loc l, IntVal i)
+
+let locloc (l1, l2) = (loc l1, locv l2)
+
+let varloc (v, l) = (var v, locv l)
+
+let refint i = RefExp (IntExp i)
+
+let refvar v = RefExp (varex v)
+
+let derefv s = DerefExp (varex s)
+
+let cases_refml3 =
+  [
+    ( "Q141",
+      [ locint ("l", 2) ],
+      [ varloc ("x", "l") ],
+      plus (derefv "x", IntExp 3),
+      "@l = 2 / x = @l |- !x + 3" );
+    ( "Q148",
+      [],
+      [],
+      lexp
+        ( "x",
+          refint 2,
+          lexp
+            ( "y",
+              refint 3,
+              lexp
+                ( "refx",
+                  refvar "x",
+                  lexp
+                    ( "refy",
+                      refvar "y",
+                      lexp
+                        ( "z",
+                          assign (derefv "refx", DerefExp (derefv "refy")),
+                          derefv "x" ) ) ) ) ),
+      "|- let x = ref 2 in let y = ref 3 in let refx = ref x in let refy = ref \
+       y in let z = !refx := !(!refy) in !x" );
+    ( "tri",
+      [ locint ("l1", 1); locint ("l2", 2); locint ("l3", 3) ],
+      [],
+      IntExp 4,
+      "@l1 = 1, @l2 = 2, @l3 = 3 / |- 4" );
+  ]
+
+let tests_refml3 =
+  "RefML3"
+  >::: List.map
+         (fun (title, store, env, exp, str) ->
+           let store =
+             let locs, values = List.split store in
+             Store.create locs values
+           in
+           parse_and_reparse_test title ~store ~env exp str)
+         cases_refml3
+
 (* 環境を含む *)
-let cases_env =
+let cases_ml3 =
   [
     ( "Q34",
       [ (var "y", IntVal 2); (var "x", IntVal 3) ],
@@ -128,39 +210,14 @@ let cases_env =
        fact 3" );
   ]
 
-(* パースが正しいか調べる *)
-let parse_env_test env expr str _ =
-  let Evaluatee.{ env = env'; expr = expr' } =
-    Evalml.Parser.toplevel Evalml.Lexer.main (Lexing.from_string str)
-  in
-  assert_equal
-    ~printer:(fun (env, expr) ->
-      Printf.sprintf "%s |- %s" (env_to_string env) (expr_to_string expr))
-    (env, expr) (env', expr')
-
-let parse_env_tests =
-  "parse env and expr"
+let tests_ml3 =
+  "ML3"
   >::: List.map
-         (fun (title, env, expr, str) -> title >:: parse_env_test env expr str)
-         cases_env
+         (fun (title, env, expr, str) ->
+           parse_and_reparse_test title ~env expr str)
+         cases_ml3
 
-(* evaleeを文字列化して再度パースし、一致するか調べる *)
-let evalee_to_string_test evalee _ =
-  let s = Evaluatee.to_string evalee in
-  let evalee' =
-    Evalml.Parser.toplevel Evalml.Lexer.main (Lexing.from_string s)
-  in
-  assert_equal ~printer:Evaluatee.to_string evalee evalee'
-
-let evalee_to_string_tests =
-  "evaluatee_to_string"
-  >::: List.map (fun (title, evalee) -> title >:: evalee_to_string_test evalee)
-       @@ List.map
-            (fun (title, env, expr, _) -> (title, Evaluatee.{ env; expr }))
-            cases_env
-
-(* exprだけ (おもにEvalML1) *)
-let cases_expr =
+let cases_ml1 =
   [
     ("Q25", BOpExp (PlusOp, IntExp 3, IntExp 5), "3 + 5");
     ( "Q26",
@@ -222,36 +279,10 @@ let cases_expr =
       "1 + 2 * -3 + 4" );
   ]
 
-(* パースが正しいか調べる *)
-let parse_expr_test expr str _ =
-  let Evaluatee.{ env = _; expr = parsed } =
-    Evalml.Parser.toplevel Evalml.Lexer.main (Lexing.from_string str)
-  in
-  assert_equal ~printer:expr_to_string expr parsed
-
-let parse_expr_tests =
-  "parse expr"
+let tests_ml1 =
+  "ML1"
   >::: List.map
-         (fun (title, exp, str) -> title >:: parse_expr_test exp str)
-         cases_expr
+         (fun (title, exp, str) -> parse_and_reparse_test title exp str)
+         cases_ml1
 
-(* exprを文字列化して再度パースし、同じexpになるかどうか調べる *)
-let expr_to_string_test exp =
-  let s = expr_to_string exp in
-  parse_expr_test exp s
-
-let expr_to_string_tests =
-  "expr_to_string"
-  >::: List.map
-         (fun (title, exp, _) -> title >:: expr_to_string_test exp)
-         cases_expr
-
-let () =
-  run_test_tt_main
-    ( "tests"
-    >::: [
-           parse_expr_tests;
-           expr_to_string_tests;
-           parse_env_tests;
-           evalee_to_string_tests;
-         ] )
+let () = run_test_tt_main ("tests" >::: [ tests_ml1; tests_ml3; tests_refml3 ])

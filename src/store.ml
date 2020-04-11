@@ -6,6 +6,8 @@ type t = {
   binds : (Loc.t * Value.value) list;
 }
 
+let empty = { pooled_locs = []; name_count = 1; binds = [] }
+
 let rec make_ref t v =
   match t.pooled_locs with
   | l :: rest -> (l, { t with pooled_locs = rest; binds = (l, v) :: t.binds })

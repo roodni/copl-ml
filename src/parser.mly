@@ -10,45 +10,67 @@ open Value
 %token LT PLUS MINUS TIMES
 %token IF THEN ELSE
 %token TURNSTILE
-%token <string> ID
+%token <Var.t> VAR
 %token EQ COMMA
 %token LET IN
 %token FUN RIGHTARROW
 %token LBRACKET RBRACKET
 %token REC
+%token <Loc.t> LOC
+%token REF
+%token ASSIGN
+%token DEREF
+%token SLASH
+%token EVALTO
 
 %nonassoc prec_let prec_fun prec_letrec
 %nonassoc prec_if
+%right ASSIGN
 %left LT
 %left PLUS MINUS
 %left TIMES
-%nonassoc INT TRUE FALSE LPAREN ID
+%nonassoc INT TRUE FALSE LPAREN VAR DEREF
 
 %start toplevel
-%type <Evaluatee.t> toplevel
+%type <Toplevel.t> toplevel
 %%
 
 toplevel :
-  | en=env TURNSTILE ex=expr END { {env = en; expr = ex} }
-  | ex=expr END { {env = []; expr = ex} }
+  | e=expr END { Toplevel.create e Toplevel.Eval }
+  | e=expr EVALTO { Toplevel.create e Toplevel.Judg }
+  | en=env TURNSTILE ex=expr END { Toplevel.create ~env:en ex Toplevel.Eval }
+  | en=env TURNSTILE ex=expr EVALTO { Toplevel.create ~env:en ex Toplevel.Judg }
+  | s=store SLASH en=env TURNSTILE ex=expr END { Toplevel.create ~store:s ~env:en ex Toplevel.Eval }
+  | s=store SLASH en=env TURNSTILE ex=expr EVALTO { Toplevel.create ~store:s ~env:en ex Toplevel.Judg }
+
+store :
+  | s=store_binds { let l, v = List.split s in Store.create l v }
+
+store_binds :
+  | { [] }
+  | b=store_bind { [b] }
+  | b=store_bind COMMA s=store_binds { b :: s }
+
+store_bind :
+  l=LOC EQ v=value  { (l, v) }
 
 env :
   | { [] }
-  | a=assign { [a] }
-  | e=env COMMA a=assign { a :: e }
+  | b=bind { [b] }
+  | e=env COMMA b=bind { b :: e }
 
-assign :
-  | id=ID EQ value=value { (Var.of_string id, value) }
+bind :
+  | var=VAR EQ value=value { (var, value) }
 
 value :
   | i=INT { IntVal i }
-  | MINUS i=INT { IntVal ~-i }
   | TRUE { BoolVal true }
   | FALSE { BoolVal false }
-  | LPAREN en=env RPAREN LBRACKET FUN id=ID RIGHTARROW ex=expr RBRACKET
-      { FunVal (en, Var.of_string id, ex) }
-  | LPAREN en=env RPAREN LBRACKET REC f=ID EQ FUN a=ID RIGHTARROW ex=expr RBRACKET
-      { RecFunVal (en, Var.of_string f, Var.of_string a, ex) }
+  | LPAREN en=env RPAREN LBRACKET FUN v=VAR RIGHTARROW ex=expr RBRACKET
+      { FunVal (en, v, ex) }
+  | LPAREN en=env RPAREN LBRACKET REC f=VAR EQ FUN a=VAR RIGHTARROW ex=expr RBRACKET
+      { RecFunVal (en, f, a, ex) }
+  | l=LOC { LocVal l }
 
 expr :
   | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { IfExp (c, t, f) }
@@ -56,16 +78,19 @@ expr :
   | l=expr PLUS r=expr { BOpExp (PlusOp, l, r) }
   | l=expr MINUS r=expr { BOpExp (MinusOp, l, r) }
   | l=expr TIMES r=expr { BOpExp (TimesOp, l, r) }
-  | LET id=ID EQ e1=expr IN e2=expr %prec prec_let { LetExp (Var.of_string id, e1, e2) }
-  | FUN id=ID RIGHTARROW e=expr %prec prec_fun { FunExp (Var.of_string id, e) }
+  | LET v=VAR EQ e1=expr IN e2=expr %prec prec_let { LetExp (v, e1, e2) }
+  | FUN v=VAR RIGHTARROW e=expr %prec prec_fun { FunExp (v, e) }
   | l=expr r=simple { AppExp (l, r) }
   | e=simple { e }
-  | LET REC f=ID EQ FUN a=ID RIGHTARROW e1=expr IN e2=expr %prec prec_letrec
-      { LetRecExp (Var.of_string f, Var.of_string a, e1, e2) }
+  | LET REC f=VAR EQ FUN a=VAR RIGHTARROW e1=expr IN e2=expr %prec prec_letrec
+      { LetRecExp (f, a, e1, e2) }
+  | l=expr ASSIGN r=expr { BOpExp (AssignOp, l, r) }
+  | REF e=simple { RefExp e }
 
 simple :
   | i=INT { IntExp i }
   | TRUE { BoolExp true }
   | FALSE { BoolExp false }
   | LPAREN e=expr RPAREN { e }
-  | id=ID { VarExp (Var.of_string id) }
+  | v=VAR { VarExp v }
+  | DEREF e=simple { DerefExp e }

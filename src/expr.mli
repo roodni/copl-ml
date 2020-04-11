@@ -1,4 +1,4 @@
-type binOp = PlusOp | MinusOp | TimesOp | LtOp
+type binOp = PlusOp | MinusOp | TimesOp | LtOp | AssignOp
 
 val binop_to_string : binOp -> string
 
@@ -12,5 +12,7 @@ type expr =
   | FunExp of Var.t * expr
   | AppExp of expr * expr
   | LetRecExp of Var.t * Var.t * expr * expr
+  | RefExp of expr
+  | DerefExp of expr
 
 val expr_to_string : expr -> string

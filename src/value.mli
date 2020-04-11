@@ -3,6 +3,7 @@ type value =
   | BoolVal of bool
   | FunVal of env * Var.t * Expr.expr
   | RecFunVal of env * Var.t * Var.t * Expr.expr
+  | LocVal of Loc.t
 
 and env = (Var.t * value) list
 

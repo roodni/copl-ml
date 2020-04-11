@@ -3,13 +3,12 @@ open Evalml
 open Evalml.Expr
 open Evalml.Value
 
-let eval_test value ?(env = []) expr _ =
-  let evaled, _ = Deriv.eval { env; expr } in
-  assert_equal ~printer:value_to_string value evaled
-
-let var = Var.of_string
-
-let varex s = VarExp (Var.of_string s)
+let eval_test title value ?(stores = (Store.empty, Store.empty)) ?(env = [])
+    expr =
+  let expected = Evaluated.to_string (value, fst stores) in
+  let evaled, _ = Deriv.eval { store = snd stores; env; expr } in
+  title >:: fun _ ->
+  assert_equal ~printer:(fun x -> x) expected (Evaluated.to_string evaled)
 
 let plus (l, r) = BOpExp (PlusOp, l, r)
 
@@ -19,9 +18,82 @@ let times (l, r) = BOpExp (TimesOp, l, r)
 
 let lt (l, r) = BOpExp (LtOp, l, r)
 
+let assign (l, r) = BOpExp (AssignOp, l, r)
+
+let var = Var.of_string
+
+let varex s = VarExp (var s)
+
+let varint (v, i) = (var v, IntVal i)
+
 let call (s, e) = AppExp (varex s, e)
 
-let cases_env =
+let lexp (v, e1, e2) = LetExp (var v, e1, e2)
+
+let loc = Loc.of_string
+
+let locv s = LocVal (loc s)
+
+let locint (l, i) = (loc l, IntVal i)
+
+let locloc (l1, l2) = (loc l1, locv l2)
+
+let varloc (v, l) = (var v, locv l)
+
+let refint i = RefExp (IntExp i)
+
+let refvar v = RefExp (varex v)
+
+let derefv s = DerefExp (varex s)
+
+let cases_refml3 =
+  [
+    ( "Q141",
+      IntVal 5,
+      [ locint ("l", 2) ],
+      [ locint ("l", 2) ],
+      [ varloc ("x", "l") ],
+      plus (derefv "x", IntExp 3) );
+    ( "Q148",
+      IntVal 3,
+      [
+        locint ("l1", 3);
+        locint ("l2", 3);
+        locloc ("l3", "l1");
+        locloc ("l4", "l2");
+      ],
+      [],
+      [],
+      lexp
+        ( "x",
+          refint 2,
+          lexp
+            ( "y",
+              refint 3,
+              lexp
+                ( "refx",
+                  refvar "x",
+                  lexp
+                    ( "refy",
+                      refvar "y",
+                      lexp
+                        ( "z",
+                          assign (derefv "refx", DerefExp (derefv "refy")),
+                          derefv "x" ) ) ) ) ) );
+  ]
+
+let tests_refml3 =
+  "RefML3"
+  >::: List.map
+         (fun (title, value, s2, s1, env, expr) ->
+           let s_create bs =
+             let locs, values = List.split bs in
+             Store.create locs values
+           in
+           eval_test title value ~stores:(s_create s2, s_create s1) ~env expr)
+         cases_refml3
+
+let cases_ml3 =
   [
     ( "Q34",
       IntVal 3,
@@ -106,14 +178,13 @@ let cases_env =
           call ("fact", IntExp 3) ) );
   ]
 
-let eval_env_tests =
-  "eval env and expr"
+let tests_ml3 =
+  "ML3"
   >::: List.map
-         (fun (title, value, env, expr) -> title >:: eval_test value ~env expr)
-         cases_env
+         (fun (title, value, env, expr) -> eval_test title value ~env expr)
+         cases_ml3
 
-(* exprだけ *)
-let cases_expr =
+let cases_ml1 =
   [
     ("Q25", IntVal 8, BOpExp (PlusOp, IntExp 3, IntExp 5));
     ( "Q26",
@@ -155,10 +226,8 @@ let cases_expr =
           IntExp 4 ) );
   ]
 
-let eval_expr_tests =
-  "eval EvalML1"
-  >::: List.map
-         (fun (title, value, exp) -> title >:: eval_test value exp)
-         cases_expr
+let tests_ml1 =
+  "ML1"
+  >::: List.map (fun (title, value, exp) -> eval_test title value exp) cases_ml1
 
-let () = run_test_tt_main ("tests" >::: [ eval_expr_tests; eval_env_tests ])
+let () = run_test_tt_main ("tests" >::: [ tests_ml1; tests_ml3; tests_refml3 ])

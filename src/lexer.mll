@@ -1,6 +1,5 @@
 {
 let reserved = [
-  ("evalto", Parser.END);
   ("true", Parser.TRUE);
   ("false", Parser.FALSE);
   ("if", Parser.IF);
@@ -9,7 +8,9 @@ let reserved = [
   ("let", Parser.LET);
   ("in", Parser.IN);
   ("fun", Parser.FUN);
-  ("rec", Parser.REC)
+  ("rec", Parser.REC);
+  ("ref", Parser.REF);
+  ("evalto", Parser.EVALTO);
 ]
 }
 
@@ -25,7 +26,7 @@ rule main = parse
   | ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '\'']* {
       let id = Lexing.lexeme lexbuf in
       try List.assoc id reserved
-      with Not_found -> Parser.ID id
+      with Not_found -> Parser.VAR (Var.of_string id)
     }
   | eof | ";;" { Parser.END }
   | "|-" { Parser.TURNSTILE }
@@ -34,3 +35,11 @@ rule main = parse
   | "->" { Parser.RIGHTARROW }
   | "[" { Parser.LBRACKET }
   | "]" { Parser.RBRACKET }
+  | "@" ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '\'']* {
+      let s = Lexing.lexeme lexbuf in
+      let id = String.sub s 1 (String.length s - 1) in
+      Parser.LOC (Loc.of_string id)
+    }
+  | ":=" { Parser.ASSIGN }
+  | "!" { Parser.DEREF }
+  | "/" { Parser.SLASH }
