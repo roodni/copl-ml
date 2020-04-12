@@ -26,6 +26,10 @@ type rule =
   | EAssign
   | ERef
   | EDeref
+  | ENil
+  | ECons
+  | EMatchNil
+  | EMatchCons
 
 let rule_to_string = function
   | EInt -> "E-Int"
@@ -53,6 +57,10 @@ let rule_to_string = function
   | EAssign -> "E-Assign"
   | ERef -> "E-Ref"
   | EDeref -> "E-Deref"
+  | ENil -> "E-Nil"
+  | ECons -> "E-Cons"
+  | EMatchNil -> "E-MatchNil"
+  | EMatchCons -> "E-MatchCons"
 
 type judgment =
   | EvalJ of { evalee : Evalee.t; evaled : Evaled.t }
@@ -157,21 +165,21 @@ let eval system evalee =
           | _ -> error (sprintf "%s is not loc" (Expr.to_string lexpr)) )
       | Expr.Var v -> (
           match system with
-          | System.EvalRefML3 ->
-              (* 1 step var *)
-              let value =
-                try List.assoc v env
-                with Not_found -> error "Undeclared variable"
-              in
-              ((value, store), EVar, [])
-          | _ -> (
+          | System.EvalML1 | System.EvalML3 -> (
               match env with
               | (v', value) :: _ when v = v' ->
                   (Evaled.of_value value, EVar1, [])
               | (_, _) :: tail ->
                   let evaled, premise = eval { evalee with env = tail } in
                   (evaled, EVar2, [ premise ])
-              | [] -> error "Undeclared variable" ) )
+              | [] -> error "Undeclared variable" )
+          | System.EvalRefML3 | System.EvalML4 ->
+              (* 1 step var *)
+              let value =
+                try List.assoc v env
+                with Not_found -> error "Undeclared variable"
+              in
+              ((value, store), EVar, []) )
       | Expr.Let (v, e1, e2) ->
           let (value1, store), deriv1 = eval { evalee with expr = e1 } in
           let (value2, store), deriv2 =
@@ -223,7 +231,39 @@ let eval system evalee =
               in
               ((value, store), EDeref, [ premise ])
           | _ -> error (sprintf "%s must be loc" (Expr.to_string e)) )
-      | _ -> assert false
+      | Expr.Nil -> (Evaled.of_value Value.Nil, ENil, [])
+      | Expr.BOp (ConsOp, l, r) ->
+          let (lvalue, _), lderiv = eval { evalee with expr = l } in
+          let (rvalue, _), rderiv = eval { evalee with expr = r } in
+          ( Evaled.of_value @@ Value.Cons (lvalue, rvalue),
+            ECons,
+            [ lderiv; rderiv ] )
+      | Expr.Match (e1, clauses) -> (
+          let (value, _), deriv1 = eval { evalee with expr = e1 } in
+          match system with
+          | System.EvalML4 -> (
+              match clauses with
+              | [
+               (Expr.NilPat, e2);
+               (Expr.ConsPat (Expr.VarPat x, Expr.VarPat y), e3);
+              ] -> (
+                  match value with
+                  | Value.Nil ->
+                      let (value, _), deriv2 = eval { evalee with expr = e2 } in
+                      (Evaled.of_value value, EMatchNil, [ deriv1; deriv2 ])
+                  | Value.Cons (v1, v2) ->
+                      let (value, _), deriv3 =
+                        eval
+                          {
+                            evalee with
+                            env = (y, v2) :: (x, v1) :: env;
+                            expr = e3;
+                          }
+                      in
+                      (Evaled.of_value value, EMatchCons, [ deriv1; deriv3 ])
+                  | _ -> error @@ sprintf "%s is not list" (Expr.to_string e1) )
+              | _ -> assert false )
+          | _ -> assert false )
     in
     (evaled, { concl = EvalJ { evalee; evaled }; rule; premises })
   in

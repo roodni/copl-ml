@@ -16,17 +16,17 @@ let times (l, r) = Expr.BOp (TimesOp, l, r)
 
 let lt (l, r) = Expr.BOp (LtOp, l, r)
 
-let assign (l, r) = Expr.BOp (AssignOp, l, r)
-
 let var = Var.of_string
 
 let varex s = Expr.Var (var s)
 
 let varint (v, i) = (var v, Value.Int i)
 
-let call (s, e) = Expr.App (varex s, e)
-
 let lexp (v, e1, e2) = Expr.Let (var v, e1, e2)
+
+let fexp (v, e) = Expr.Fun (var v, e)
+
+let call (s, e) = Expr.App (varex s, e)
 
 let loc = Loc.of_string
 
@@ -43,6 +43,51 @@ let refint i = Expr.Ref (Expr.Int i)
 let refvar v = Expr.Ref (varex v)
 
 let derefv s = Expr.Deref (varex s)
+
+let assign (l, r) = Expr.BOp (AssignOp, l, r)
+
+let cons (l, r) = Expr.BOp (ConsOp, l, r)
+
+let icons (i, l) = cons (Expr.Int i, l)
+
+let ml4match (e, nil_e, cons_v1, cons_v2, cons_e) =
+  Expr.Match
+    ( e,
+      [
+        (NilPat, nil_e);
+        (ConsPat (VarPat (var cons_v1), VarPat (var cons_v2)), cons_e);
+      ] )
+
+let rec ilistv il =
+  match il with
+  | [] -> Value.Nil
+  | i :: rest -> Value.Cons (Value.Int i, ilistv rest)
+
+let cases_ml4 =
+  [
+    ( "Q70",
+      ilistv [ 3; 7 ],
+      [],
+      cons
+        ( plus (Expr.Int 1, Expr.Int 2),
+          cons (plus (Expr.Int 3, Expr.Int 4), Expr.Nil) ) );
+    ( "Q71",
+      Value.Int 5,
+      [],
+      lexp
+        ( "f",
+          fexp ("x", ml4match (varex "x", Expr.Int 0, "a", "b", varex "a")),
+          plus
+            ( plus (call ("f", icons (4, Expr.Nil)), call ("f", Expr.Nil)),
+              call ("f", icons (1, icons (2, icons (3, Expr.Nil)))) ) ) );
+  ]
+
+let tests_ml4 =
+  "ML4"
+  >::: List.map
+         (fun (title, value, env, expr) ->
+           eval_test System.EvalML4 title value ~env expr)
+         cases_ml4
 
 let cases_refml3 =
   [
@@ -243,4 +288,6 @@ let tests_ml1 =
          (fun (title, value, exp) -> eval_test EvalML1 title value exp)
          cases_ml1
 
-let () = run_test_tt_main ("tests" >::: [ tests_ml1; tests_ml3; tests_refml3 ])
+let () =
+  run_test_tt_main
+    ("tests" >::: [ tests_ml1; tests_ml3; tests_refml3; tests_ml4 ])
