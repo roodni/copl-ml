@@ -1,5 +1,4 @@
 open Expr
-open Value
 open Printf
 
 type rule =
@@ -97,14 +96,14 @@ let eval system evalee =
     let error s = raise @@ EvalError (s, expr) in
     let evaled, rule, premises =
       match expr with
-      | IntExp i -> ((IntVal i, store), EInt, [])
-      | BoolExp b -> ((BoolVal b, store), EBool, [])
+      | IntExp i -> ((Value.Int i, store), EInt, [])
+      | BoolExp b -> ((Value.Bool b, store), EBool, [])
       | IfExp (c, t, f) ->
           let (cvalue, store), cderiv = eval { evalee with expr = c } in
           let retexpr, rule =
             match cvalue with
-            | BoolVal true -> (t, EIfT)
-            | BoolVal false -> (f, EIfF)
+            | Value.Bool true -> (t, EIfT)
+            | Value.Bool false -> (f, EIfF)
             | _ -> error "Condition must be bool"
           in
           let ret, retderiv = eval { evalee with store; expr = retexpr } in
@@ -115,15 +114,15 @@ let eval system evalee =
             eval { evalee with store; expr = rexpr }
           in
           match (lvalue, rvalue) with
-          | IntVal li, IntVal ri ->
+          | Value.Int li, Value.Int ri ->
               let value, erule, bjudg, brule =
                 match op with
                 | PlusOp ->
                     let i = li + ri in
-                    (IntVal i, EPlus, PlusJ (li, ri, i), BPlus)
+                    (Value.Int i, EPlus, PlusJ (li, ri, i), BPlus)
                 | MinusOp ->
                     let i = li - ri in
-                    (IntVal i, EMinus, MinusJ (li, ri, i), BMinus)
+                    (Value.Int i, EMinus, MinusJ (li, ri, i), BMinus)
                 | TimesOp ->
                     let i = li * ri in
                     let erule, brule =
@@ -131,10 +130,10 @@ let eval system evalee =
                       | System.EvalRefML3 -> (EMult, BMult)
                       | _ -> (ETimes, BTimes)
                     in
-                    (IntVal i, erule, TimesJ (li, ri, i), brule)
+                    (Value.Int i, erule, TimesJ (li, ri, i), brule)
                 | LtOp ->
                     let b = li < ri in
-                    (BoolVal b, ELt, LtJ (li, ri, b), BLt)
+                    (Value.Bool b, ELt, LtJ (li, ri, b), BLt)
                 | _ -> assert false
               in
               ( (value, store),
@@ -149,7 +148,7 @@ let eval system evalee =
             eval { evalee with store; expr = rexpr }
           in
           match lvalue with
-          | LocVal loc ->
+          | Value.Loc loc ->
               let store =
                 try Store.assign store loc rvalue
                 with Store.Invalid_reference -> error "Invalid reference"
@@ -179,17 +178,17 @@ let eval system evalee =
             eval { store; env = (v, value1) :: env; expr = e2 }
           in
           ((value2, store), ELet, [ deriv1; deriv2 ])
-      | FunExp (v, e) -> ((FunVal (env, v, e), store), EFun, [])
+      | FunExp (v, e) -> ((Value.Fun (env, v, e), store), EFun, [])
       | AppExp (e1, e2) -> (
           let (fval, store), fderiv = eval { evalee with expr = e1 } in
           let (aval, store), aderiv = eval { evalee with store; expr = e2 } in
           match fval with
-          | FunVal (fenv, avar, fexpr) ->
+          | Value.Fun (fenv, avar, fexpr) ->
               let evaled, deriv =
                 eval { store; env = (avar, aval) :: fenv; expr = fexpr }
               in
               (evaled, EApp, [ fderiv; aderiv; deriv ])
-          | RecFunVal (fenv, fvar, avar, fexpr) ->
+          | Value.RecFun (fenv, fvar, avar, fexpr) ->
               let evaled, deriv =
                 eval
                   {
@@ -205,7 +204,7 @@ let eval system evalee =
             eval
               {
                 evalee with
-                env = (f, RecFunVal (env, f, a, e1)) :: env;
+                env = (f, Value.RecFun (env, f, a, e1)) :: env;
                 expr = e2;
               }
           in
@@ -213,11 +212,11 @@ let eval system evalee =
       | RefExp e ->
           let (value, store), premise = eval { evalee with expr = e } in
           let loc, store = Store.make_ref store value in
-          ((LocVal loc, store), ERef, [ premise ])
+          ((Value.Loc loc, store), ERef, [ premise ])
       | DerefExp e -> (
           let (value, store), premise = eval { evalee with expr = e } in
           match value with
-          | LocVal loc ->
+          | Value.Loc loc ->
               let value =
                 try Store.deref store loc
                 with Store.Invalid_reference -> error "Invalid reference"

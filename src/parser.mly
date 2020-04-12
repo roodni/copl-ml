@@ -1,6 +1,5 @@
 %{
 open Expr
-open Value
 %}
 
 %token END
@@ -65,14 +64,14 @@ bind :
   | var=VAR EQ value=value { (var, value) }
 
 value :
-  | i=INT { IntVal i }
-  | TRUE { BoolVal true }
-  | FALSE { BoolVal false }
+  | i=INT { Value.Int i }
+  | TRUE { Value.Bool true }
+  | FALSE { Value.Bool false }
   | LPAREN en=env RPAREN LBRACKET FUN v=VAR RIGHTARROW ex=expr RBRACKET
-      { FunVal (en, v, ex) }
+      { Value.Fun (en, v, ex) }
   | LPAREN en=env RPAREN LBRACKET REC f=VAR EQ FUN a=VAR RIGHTARROW ex=expr RBRACKET
-      { RecFunVal (en, f, a, ex) }
-  | l=LOC { LocVal l }
+      { Value.RecFun (en, f, a, ex) }
+  | l=LOC { Value.Loc l }
 
 expr :
   | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { IfExp (c, t, f) }

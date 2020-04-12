@@ -1,12 +1,12 @@
-type value =
-  | IntVal of int
-  | BoolVal of bool
-  | FunVal of env * Var.t * Expr.expr
-  | RecFunVal of env * Var.t * Var.t * Expr.expr
-  | LocVal of Loc.t
+type t =
+  | Int of int
+  | Bool of bool
+  | Fun of env * Var.t * Expr.expr
+  | RecFun of env * Var.t * Var.t * Expr.expr
+  | Loc of Loc.t
 
-and env = (Var.t * value) list
+and env = (Var.t * t) list
 
-val value_to_string : value -> string
+val to_string : t -> string
 
 val env_to_string : env -> string

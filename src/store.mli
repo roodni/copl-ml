@@ -4,16 +4,16 @@ exception Invalid_reference
 
 val empty : t
 
-val create : Loc.t list -> Value.value list -> t
+val create : Loc.t list -> Value.t list -> t
 
-val make_ref : t -> Value.value -> Loc.t * t
+val make_ref : t -> Value.t -> Loc.t * t
 
-val assign : t -> Loc.t -> Value.value -> t
+val assign : t -> Loc.t -> Value.t -> t
 
-val deref : t -> Loc.t -> Value.value
+val deref : t -> Loc.t -> Value.t
 
 val to_string : t -> string
 
 val is_empty : t -> bool
 
-val binds : t -> (Loc.t * Value.value) list
+val binds : t -> (Loc.t * Value.t) list

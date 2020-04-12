@@ -3,7 +3,7 @@ open Printf
 type t = {
   pooled_locs : Loc.t list;
   name_count : int;
-  binds : (Loc.t * Value.value) list;
+  binds : (Loc.t * Value.t) list;
 }
 
 exception Invalid_reference
@@ -37,7 +37,7 @@ let deref t loc =
 
 let to_string t =
   let bind_to_string (loc, value) =
-    sprintf "%s = %s" (Loc.to_string loc) (Value.value_to_string value)
+    sprintf "%s = %s" (Loc.to_string loc) (Value.to_string value)
   in
   let rec binds_to_string = function
     | [] -> ""

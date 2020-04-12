@@ -1,7 +1,6 @@
 open OUnit2
 open Evalml
 open Evalml.Expr
-open Evalml.Value
 
 let parse_and_reparse_test title ?(store = Store.empty) ?(env = []) expr str =
   let expected = Evalee.{ store; env; expr } in
@@ -31,7 +30,7 @@ let var = Var.of_string
 
 let varex s = VarExp (var s)
 
-let varint (v, i) = (var v, IntVal i)
+let varint (v, i) = (var v, Value.Int i)
 
 let call (s, e) = AppExp (varex s, e)
 
@@ -39,9 +38,9 @@ let lexp (v, e1, e2) = LetExp (var v, e1, e2)
 
 let loc = Loc.of_string
 
-let locv s = LocVal (loc s)
+let locv s = Value.Loc (loc s)
 
-let locint (l, i) = (loc l, IntVal i)
+let locint (l, i) = (loc l, Value.Int i)
 
 let locloc (l1, l2) = (loc l1, locv l2)
 
@@ -103,11 +102,11 @@ let tests_refml3 =
 let cases_ml3 =
   [
     ( "Q34",
-      [ (var "y", IntVal 2); (var "x", IntVal 3) ],
+      [ (var "y", Value.Int 2); (var "x", Value.Int 3) ],
       VarExp (var "x"),
       "x = 3, y = 2 |- x" );
     ( "Q35",
-      [ (var "y", IntVal 4); (var "x", BoolVal true) ],
+      [ (var "y", Value.Int 4); (var "x", Value.Bool true) ],
       IfExp
         ( VarExp (var "x"),
           BOpExp (PlusOp, VarExp (var "y"), IntExp 1),
@@ -173,8 +172,8 @@ let cases_ml3 =
     ( "fun env",
       [
         ( var "f",
-          FunVal
-            ( [ (var "y", IntVal 2); (var "x", IntVal 1) ],
+          Value.Fun
+            ( [ (var "y", Value.Int 2); (var "x", Value.Int 1) ],
               var "z",
               plus (plus (varex "x", varex "y"), varex "z") ) );
       ],
@@ -195,7 +194,7 @@ let cases_ml3 =
     ( "rec fun env",
       [
         ( var "fact",
-          RecFunVal
+          Value.RecFun
             ( [],
               var "fact",
               var "n",
