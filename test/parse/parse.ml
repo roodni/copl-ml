@@ -4,17 +4,17 @@ open Evalml.Expr
 open Evalml.Value
 
 let parse_and_reparse_test title ?(store = Store.empty) ?(env = []) expr str =
-  let expected = Evaluatee.{ store; env; expr } in
+  let expected = Evalee.{ store; env; expr } in
   let parse s =
-    Toplevel.to_evaluatee @@ Parser.toplevel Lexer.main (Lexing.from_string s)
+    Toplevel.to_evalee @@ Parser.toplevel Lexer.main (Lexing.from_string s)
   in
   title
   >::: [
          ( "parse" >:: fun _ ->
-           assert_equal ~printer:Evaluatee.to_string expected (parse str) );
+           assert_equal ~printer:Evalee.to_string expected (parse str) );
          ( "reparse" >:: fun _ ->
-           assert_equal ~printer:Evaluatee.to_string expected
-             (Evaluatee.to_string expected |> parse) );
+           assert_equal ~printer:Evalee.to_string expected
+             (Evalee.to_string expected |> parse) );
        ]
 
 let plus (l, r) = BOpExp (PlusOp, l, r)

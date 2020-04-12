@@ -9,11 +9,11 @@ type t = {
 
 let create ?store ?env expr input_type = { store; env; expr; input_type }
 
-let to_evaluatee t =
+let to_evalee t =
   {
-    Evaluatee.store = Option.value t.store ~default:Store.empty;
-    Evaluatee.env = Option.value t.env ~default:[];
-    Evaluatee.expr = t.expr;
+    Evalee.store = Option.value t.store ~default:Store.empty;
+    Evalee.env = Option.value t.env ~default:[];
+    Evalee.expr = t.expr;
   }
 
 let is_judg t = t.input_type = Judg

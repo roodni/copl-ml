@@ -12,7 +12,7 @@ let eval_input_to_deriv () =
         exit 1
   in
   let system = System.EvalRefML3 in
-  let evalee = Toplevel.to_evaluatee toplevel in
+  let evalee = Toplevel.to_evalee toplevel in
   let evaled, deriv =
     try Deriv.eval system evalee
     with Deriv.EvalError (er, ex) ->
@@ -35,7 +35,7 @@ let eval_input_to_deriv () =
           in
           loc :: get_locs (num - 1)
       in
-      let locnum = Evaluated.store evaled |> Store.binds |> List.length in
+      let locnum = Evaled.store evaled |> Store.binds |> List.length in
       let locs = get_locs locnum in
       let values = Store.binds evalee.store |> List.split |> snd in
       Deriv.eval system { evalee with store = Store.create locs values } |> snd

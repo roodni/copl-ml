@@ -57,7 +57,7 @@ let rule_to_string = function
   | EDeref -> "E-Deref"
 
 type judgment =
-  | EvalJ of { evalee : Evaluatee.t; evaled : Evaluated.t }
+  | EvalJ of { evalee : Evalee.t; evaled : Evaled.t }
   | PlusJ of int * int * int
   | MinusJ of int * int * int
   | TimesJ of int * int * int
@@ -65,9 +65,7 @@ type judgment =
 
 let judgment_to_string = function
   | EvalJ { evalee; evaled } ->
-      sprintf "%s evalto %s"
-        (Evaluatee.to_string evalee)
-        (Evaluated.to_string evaled)
+      sprintf "%s evalto %s" (Evalee.to_string evalee) (Evaled.to_string evaled)
   | PlusJ (l, r, s) -> sprintf "%d plus %d is %d" l r s
   | MinusJ (l, r, d) -> sprintf "%d minus %d is %d" l r d
   | TimesJ (l, r, p) -> sprintf "%d times %d is %d" l r p
@@ -95,7 +93,7 @@ exception EvalError of string * Expr.expr
 
 let eval system evalee =
   let rec eval evalee =
-    let Evaluatee.{ store; env; expr } = evalee in
+    let Evalee.{ store; env; expr } = evalee in
     let error s = raise @@ EvalError (s, expr) in
     let evaled, rule, premises =
       match expr with
@@ -170,7 +168,7 @@ let eval system evalee =
           | _ -> (
               match env with
               | (v', value) :: _ when v = v' ->
-                  (Evaluated.of_value value, EVar1, [])
+                  (Evaled.of_value value, EVar1, [])
               | (_, _) :: tail ->
                   let evaled, premise = eval { evalee with env = tail } in
                   (evaled, EVar2, [ premise ])
