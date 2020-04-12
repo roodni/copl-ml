@@ -77,6 +77,7 @@ value :
   | l=LOC { Value.Loc l }
   | NIL { Value.Nil }
   | l=value CONS r=value { Value.Cons (l, r) }
+  | LPAREN v=value RPAREN { v }
 
 expr :
   | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { Expr.If (c, t, f) }

@@ -22,7 +22,11 @@ let rec to_string = function
         (Var.to_string f) (Var.to_string a) (Expr.to_string expr)
   | Loc l -> Loc.to_string l
   | Nil -> "[]"
-  | Cons (l, r) -> sprintf "%s :: %s" (to_string l) (to_string r)
+  | Cons (l, r) ->
+      let ls = to_string l in
+      sprintf "%s :: %s"
+        (match l with Cons _ -> "(" ^ ls ^ ")" | _ -> ls)
+        (to_string r)
 
 and env_to_string env =
   let bind_to_string (var, value) =

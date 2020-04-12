@@ -102,6 +102,15 @@ let cases_ml4 =
       "|- match [] with [] -> (match [] with [] -> 1 | x :: y -> x) | a :: b \
        -> if false then a else (match [] with [] -> 2 | c :: d -> c)" );
     ("env", [ (var "x", ilistv [ 2; 1 ]) ], varex "x", "x = 2 :: 1 :: [] |- x");
+    ( "nested list",
+      [
+        ( var "x",
+          Value.Cons
+            ( Value.Int 1,
+              Value.Cons (Value.Cons (Value.Int 2, Value.Int 3), Value.Nil) ) );
+      ],
+      varex "x",
+      "x = 1 :: (2 :: 3) :: [] |- x" );
   ]
 
 let tests_ml4 =
