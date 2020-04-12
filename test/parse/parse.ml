@@ -65,6 +65,11 @@ let ml4match (e, nil_e, cons_v1, cons_v2, cons_e) =
         (ConsPat (VarPat (var cons_v1), VarPat (var cons_v2)), cons_e);
       ] )
 
+let rec ilistv il =
+  match il with
+  | [] -> Value.Nil
+  | i :: rest -> Value.Cons (Value.Int i, ilistv rest)
+
 let cases_ml4 =
   [
     ( "Q70",
@@ -96,6 +101,7 @@ let cases_ml4 =
               ml4match (Expr.Nil, Expr.Int 2, "c", "d", varex "c") ) ),
       "|- match [] with [] -> (match [] with [] -> 1 | x :: y -> x) | a :: b \
        -> if false then a else (match [] with [] -> 2 | c :: d -> c)" );
+    ("env", [ (var "x", ilistv [ 2; 1 ]) ], varex "x", "x = 2 :: 1 :: [] |- x");
   ]
 
 let tests_ml4 =

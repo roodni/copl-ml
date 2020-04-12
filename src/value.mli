@@ -4,6 +4,8 @@ type t =
   | Fun of env * Var.t * Expr.t
   | RecFun of env * Var.t * Var.t * Expr.t
   | Loc of Loc.t
+  | Nil
+  | Cons of t * t
 
 and env = (Var.t * t) list
 

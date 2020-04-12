@@ -75,6 +75,8 @@ value :
   | LPAREN en=env RPAREN LBRACKET REC f=VAR EQ FUN a=VAR RIGHTARROW ex=expr RBRACKET
       { Value.RecFun (en, f, a, ex) }
   | l=LOC { Value.Loc l }
+  | NIL { Value.Nil }
+  | l=value CONS r=value { Value.Cons (l, r) }
 
 expr :
   | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { Expr.If (c, t, f) }
