@@ -1,4 +1,3 @@
-open Expr
 open Printf
 
 type rule =
@@ -88,7 +87,7 @@ let rec output ?(indent = 0) ?(outchan = stdout) { premises; rule; concl } =
     output_indent indent;
     printf "};\n" )
 
-exception EvalError of string * Expr.expr
+exception EvalError of string * Expr.t
 
 let eval system evalee =
   let rec eval evalee =
@@ -96,9 +95,9 @@ let eval system evalee =
     let error s = raise @@ EvalError (s, expr) in
     let evaled, rule, premises =
       match expr with
-      | IntExp i -> ((Value.Int i, store), EInt, [])
-      | BoolExp b -> ((Value.Bool b, store), EBool, [])
-      | IfExp (c, t, f) ->
+      | Expr.Int i -> ((Value.Int i, store), EInt, [])
+      | Expr.Bool b -> ((Value.Bool b, store), EBool, [])
+      | Expr.If (c, t, f) ->
           let (cvalue, store), cderiv = eval { evalee with expr = c } in
           let retexpr, rule =
             match cvalue with
@@ -108,7 +107,8 @@ let eval system evalee =
           in
           let ret, retderiv = eval { evalee with store; expr = retexpr } in
           (ret, rule, [ cderiv; retderiv ])
-      | BOpExp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr) -> (
+      | Expr.BOp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr)
+        -> (
           let (lvalue, store), lderiv = eval { evalee with expr = lexpr } in
           let (rvalue, store), rderiv =
             eval { evalee with store; expr = rexpr }
@@ -142,7 +142,7 @@ let eval system evalee =
                   lderiv; rderiv; { concl = bjudg; rule = brule; premises = [] };
                 ] )
           | _ -> error "Both arguments must be int" )
-      | BOpExp (AssignOp, lexpr, rexpr) -> (
+      | Expr.BOp (AssignOp, lexpr, rexpr) -> (
           let (lvalue, store), lderiv = eval { evalee with expr = lexpr } in
           let (rvalue, store), rderiv =
             eval { evalee with store; expr = rexpr }
@@ -154,8 +154,8 @@ let eval system evalee =
                 with Store.Invalid_reference -> error "Invalid reference"
               in
               ((rvalue, store), EAssign, [ lderiv; rderiv ])
-          | _ -> error (sprintf "%s is not loc" (expr_to_string lexpr)) )
-      | VarExp v -> (
+          | _ -> error (sprintf "%s is not loc" (Expr.to_string lexpr)) )
+      | Expr.Var v -> (
           match system with
           | System.EvalRefML3 ->
               (* 1 step var *)
@@ -172,14 +172,14 @@ let eval system evalee =
                   let evaled, premise = eval { evalee with env = tail } in
                   (evaled, EVar2, [ premise ])
               | [] -> error "Undeclared variable" ) )
-      | LetExp (v, e1, e2) ->
+      | Expr.Let (v, e1, e2) ->
           let (value1, store), deriv1 = eval { evalee with expr = e1 } in
           let (value2, store), deriv2 =
             eval { store; env = (v, value1) :: env; expr = e2 }
           in
           ((value2, store), ELet, [ deriv1; deriv2 ])
-      | FunExp (v, e) -> ((Value.Fun (env, v, e), store), EFun, [])
-      | AppExp (e1, e2) -> (
+      | Expr.Fun (v, e) -> ((Value.Fun (env, v, e), store), EFun, [])
+      | Expr.App (e1, e2) -> (
           let (fval, store), fderiv = eval { evalee with expr = e1 } in
           let (aval, store), aderiv = eval { evalee with store; expr = e2 } in
           match fval with
@@ -198,8 +198,8 @@ let eval system evalee =
                   }
               in
               (evaled, EAppRec, [ fderiv; aderiv; deriv ])
-          | _ -> error (sprintf "%s cannot be applied" (expr_to_string e1)) )
-      | LetRecExp (f, a, e1, e2) ->
+          | _ -> error (sprintf "%s cannot be applied" (Expr.to_string e1)) )
+      | Expr.LetRec (f, a, e1, e2) ->
           let evaled, premise =
             eval
               {
@@ -209,11 +209,11 @@ let eval system evalee =
               }
           in
           (evaled, ELetRec, [ premise ])
-      | RefExp e ->
+      | Expr.Ref e ->
           let (value, store), premise = eval { evalee with expr = e } in
           let loc, store = Store.make_ref store value in
           ((Value.Loc loc, store), ERef, [ premise ])
-      | DerefExp e -> (
+      | Expr.Deref e -> (
           let (value, store), premise = eval { evalee with expr = e } in
           match value with
           | Value.Loc loc ->
@@ -222,7 +222,7 @@ let eval system evalee =
                 with Store.Invalid_reference -> error "Invalid reference"
               in
               ((value, store), EDeref, [ premise ])
-          | _ -> error (sprintf "%s must be loc" (expr_to_string e)) )
+          | _ -> error (sprintf "%s must be loc" (Expr.to_string e)) )
     in
     (evaled, { concl = EvalJ { evalee; evaled }; rule; premises })
   in

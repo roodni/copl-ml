@@ -1,8 +1,8 @@
 type t =
   | Int of int
   | Bool of bool
-  | Fun of env * Var.t * Expr.expr
-  | RecFun of env * Var.t * Var.t * Expr.expr
+  | Fun of env * Var.t * Expr.t
+  | RecFun of env * Var.t * Var.t * Expr.t
   | Loc of Loc.t
 
 and env = (Var.t * t) list

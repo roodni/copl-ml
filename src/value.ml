@@ -1,11 +1,10 @@
-open Expr
 open Printf
 
 type t =
   | Int of int
   | Bool of bool
-  | Fun of env * Var.t * Expr.expr
-  | RecFun of env * Var.t * Var.t * Expr.expr
+  | Fun of env * Var.t * Expr.t
+  | RecFun of env * Var.t * Var.t * Expr.t
   | Loc of Loc.t
 
 and env = (Var.t * t) list
@@ -15,10 +14,10 @@ let rec to_string = function
   | Bool b -> string_of_bool b
   | Fun (env, v, expr) ->
       sprintf "(%s)[fun %s -> %s]" (env_to_string env) (Var.to_string v)
-        (expr_to_string expr)
+        (Expr.to_string expr)
   | RecFun (env, f, a, expr) ->
       sprintf "(%s)[rec %s = fun %s -> %s]" (env_to_string env)
-        (Var.to_string f) (Var.to_string a) (expr_to_string expr)
+        (Var.to_string f) (Var.to_string a) (Expr.to_string expr)
   | Loc l -> Loc.to_string l
 
 and env_to_string env =

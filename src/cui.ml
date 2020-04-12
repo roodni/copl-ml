@@ -16,7 +16,7 @@ let eval_input_to_deriv () =
   let evaled, deriv =
     try Deriv.eval system evalee
     with Deriv.EvalError (er, ex) ->
-      eprintf "%s: %s\n" er (Expr.expr_to_string ex);
+      eprintf "%s: %s\n" er (Expr.to_string ex);
       exit 1
   in
   let deriv =

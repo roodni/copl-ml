@@ -1,18 +1,16 @@
 type binOp = PlusOp | MinusOp | TimesOp | LtOp | AssignOp
 
-val binop_to_string : binOp -> string
+type t =
+  | Int of int
+  | Bool of bool
+  | BOp of binOp * t * t
+  | If of t * t * t
+  | Var of Var.t
+  | Let of Var.t * t * t
+  | Fun of Var.t * t
+  | App of t * t
+  | LetRec of Var.t * Var.t * t * t
+  | Ref of t
+  | Deref of t
 
-type expr =
-  | IntExp of int
-  | BoolExp of bool
-  | BOpExp of binOp * expr * expr
-  | IfExp of expr * expr * expr
-  | VarExp of Var.t
-  | LetExp of Var.t * expr * expr
-  | FunExp of Var.t * expr
-  | AppExp of expr * expr
-  | LetRecExp of Var.t * Var.t * expr * expr
-  | RefExp of expr
-  | DerefExp of expr
-
-val expr_to_string : expr -> string
+val to_string : t -> string

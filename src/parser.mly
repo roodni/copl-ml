@@ -1,7 +1,3 @@
-%{
-open Expr
-%}
-
 %token END
 %token <int> INT
 %token TRUE FALSE
@@ -74,27 +70,27 @@ value :
   | l=LOC { Value.Loc l }
 
 expr :
-  | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { IfExp (c, t, f) }
-  | l=expr LT r=expr { BOpExp (LtOp, l, r) }
-  | l=expr PLUS r=expr { BOpExp (PlusOp, l, r) }
-  | l=expr MINUS r=expr { BOpExp (MinusOp, l, r) }
-  | l=expr TIMES r=expr { BOpExp (TimesOp, l, r) }
-  | LET v=VAR EQ e1=expr IN e2=expr %prec prec_let { LetExp (v, e1, e2) }
-  | FUN v=VAR RIGHTARROW e=expr %prec prec_fun { FunExp (v, e) }
-  | l=expr r=simple { AppExp (l, r) }
+  | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { Expr.If (c, t, f) }
+  | l=expr LT r=expr { Expr.BOp (LtOp, l, r) }
+  | l=expr PLUS r=expr { Expr.BOp (PlusOp, l, r) }
+  | l=expr MINUS r=expr { Expr.BOp (MinusOp, l, r) }
+  | l=expr TIMES r=expr { Expr.BOp (TimesOp, l, r) }
+  | LET v=VAR EQ e1=expr IN e2=expr %prec prec_let { Expr.Let (v, e1, e2) }
+  | FUN v=VAR RIGHTARROW e=expr %prec prec_fun { Expr.Fun (v, e) }
+  | l=expr r=simple { Expr.App (l, r) }
   | e=simple { e }
   | LET REC f=VAR EQ FUN a=VAR RIGHTARROW e1=expr IN e2=expr %prec prec_letrec
-      { LetRecExp (f, a, e1, e2) }
-  | l=expr ASSIGN r=expr { BOpExp (AssignOp, l, r) }
-  | REF e=simple { RefExp e }
+      { Expr.LetRec (f, a, e1, e2) }
+  | l=expr ASSIGN r=expr { Expr.BOp (AssignOp, l, r) }
+  | REF e=simple { Expr.Ref e }
 
 simple :
-  | i=INT { IntExp i }
-  | TRUE { BoolExp true }
-  | FALSE { BoolExp false }
+  | i=INT { Expr.Int i }
+  | TRUE { Expr.Bool true }
+  | FALSE { Expr.Bool false }
   | LPAREN e=expr RPAREN { e }
-  | v=VAR { VarExp v }
-  | DEREF e=simple { DerefExp e }
+  | v=VAR { Expr.Var v }
+  | DEREF e=simple { Expr.Deref e }
 
 loc_name :
   | value SLASH l=LOC EQ { l }

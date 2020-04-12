@@ -3,7 +3,7 @@ type input_type = Judg | Eval
 type t = {
   store : Store.t option;
   env : Value.env option;
-  expr : Expr.expr;
+  expr : Expr.t;
   input_type : input_type;
 }
 

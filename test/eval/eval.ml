@@ -1,6 +1,5 @@
 open OUnit2
 open Evalml
-open Evalml.Expr
 
 let eval_test system title value ?(stores = (Store.empty, Store.empty))
     ?(env = []) expr =
@@ -9,25 +8,25 @@ let eval_test system title value ?(stores = (Store.empty, Store.empty))
   title >:: fun _ ->
   assert_equal ~printer:(fun x -> x) expected (Evaled.to_string evaled)
 
-let plus (l, r) = BOpExp (PlusOp, l, r)
+let plus (l, r) = Expr.BOp (PlusOp, l, r)
 
-let minus (l, r) = BOpExp (MinusOp, l, r)
+let minus (l, r) = Expr.BOp (MinusOp, l, r)
 
-let times (l, r) = BOpExp (TimesOp, l, r)
+let times (l, r) = Expr.BOp (TimesOp, l, r)
 
-let lt (l, r) = BOpExp (LtOp, l, r)
+let lt (l, r) = Expr.BOp (LtOp, l, r)
 
-let assign (l, r) = BOpExp (AssignOp, l, r)
+let assign (l, r) = Expr.BOp (AssignOp, l, r)
 
 let var = Var.of_string
 
-let varex s = VarExp (var s)
+let varex s = Expr.Var (var s)
 
 let varint (v, i) = (var v, Value.Int i)
 
-let call (s, e) = AppExp (varex s, e)
+let call (s, e) = Expr.App (varex s, e)
 
-let lexp (v, e1, e2) = LetExp (var v, e1, e2)
+let lexp (v, e1, e2) = Expr.Let (var v, e1, e2)
 
 let loc = Loc.of_string
 
@@ -39,11 +38,11 @@ let locloc (l1, l2) = (loc l1, locv l2)
 
 let varloc (v, l) = (var v, locv l)
 
-let refint i = RefExp (IntExp i)
+let refint i = Expr.Ref (Expr.Int i)
 
-let refvar v = RefExp (varex v)
+let refvar v = Expr.Ref (varex v)
 
-let derefv s = DerefExp (varex s)
+let derefv s = Expr.Deref (varex s)
 
 let cases_refml3 =
   [
@@ -52,7 +51,7 @@ let cases_refml3 =
       [ locint ("l", 2) ],
       [ locint ("l", 2) ],
       [ varloc ("x", "l") ],
-      plus (derefv "x", IntExp 3) );
+      plus (derefv "x", Expr.Int 3) );
     ( "Q148",
       Value.Int 3,
       [
@@ -77,7 +76,7 @@ let cases_refml3 =
                       refvar "y",
                       lexp
                         ( "z",
-                          assign (derefv "refx", DerefExp (derefv "refy")),
+                          assign (derefv "refx", Expr.Deref (derefv "refy")),
                           derefv "x" ) ) ) ) ) );
   ]
 
@@ -99,85 +98,88 @@ let cases_ml3 =
     ( "Q34",
       Value.Int 3,
       [ (var "y", Value.Int 2); (var "x", Value.Int 3) ],
-      VarExp (var "x") );
+      Expr.Var (var "x") );
     ( "Q35",
       Value.Int 5,
       [ (var "y", Value.Int 4); (var "x", Value.Bool true) ],
-      IfExp
-        ( VarExp (var "x"),
-          BOpExp (PlusOp, VarExp (var "y"), IntExp 1),
-          BOpExp (MinusOp, VarExp (var "y"), IntExp 1) ) );
+      Expr.If
+        ( Expr.Var (var "x"),
+          Expr.BOp (PlusOp, Expr.Var (var "y"), Expr.Int 1),
+          Expr.BOp (MinusOp, Expr.Var (var "y"), Expr.Int 1) ) );
     ( "Q36",
       Value.Int 12,
       [],
-      LetExp
+      Expr.Let
         ( var "x",
-          BOpExp (PlusOp, IntExp 1, IntExp 2),
-          BOpExp (TimesOp, VarExp (var "x"), IntExp 4) ) );
+          Expr.BOp (PlusOp, Expr.Int 1, Expr.Int 2),
+          Expr.BOp (TimesOp, Expr.Var (var "x"), Expr.Int 4) ) );
     ( "Q39",
       Value.Int 5,
       [],
-      LetExp
+      Expr.Let
         ( var "x",
-          LetExp
+          Expr.Let
             ( var "y",
-              BOpExp (MinusOp, IntExp 3, IntExp 2),
-              BOpExp (TimesOp, VarExp (var "y"), VarExp (var "y")) ),
-          LetExp
+              Expr.BOp (MinusOp, Expr.Int 3, Expr.Int 2),
+              Expr.BOp (TimesOp, Expr.Var (var "y"), Expr.Var (var "y")) ),
+          Expr.Let
             ( var "y",
-              IntExp 4,
-              BOpExp (PlusOp, VarExp (var "x"), VarExp (var "y")) ) ) );
+              Expr.Int 4,
+              Expr.BOp (PlusOp, Expr.Var (var "x"), Expr.Var (var "y")) ) ) );
     ( "Q40",
-      Value.Fun ([], var "x", plus (varex "x", IntExp 1)),
+      Value.Fun ([], var "x", plus (varex "x", Expr.Int 1)),
       [],
-      FunExp (var "x", plus (varex "x", IntExp 1)) );
+      Expr.Fun (var "x", plus (varex "x", Expr.Int 1)) );
     ( "Q41",
       Value.Fun
         ([ (var "y", Value.Int 2) ], var "x", plus (varex "x", varex "y")),
       [],
-      LetExp (var "y", IntExp 2, FunExp (var "x", plus (varex "x", varex "y")))
+      Expr.Let
+        (var "y", Expr.Int 2, Expr.Fun (var "x", plus (varex "x", varex "y")))
     );
     ( "Q42",
       Value.Int 25,
       [],
-      LetExp
+      Expr.Let
         ( var "sq",
-          FunExp (var "x", times (varex "x", varex "x")),
-          plus (AppExp (varex "sq", IntExp 3), AppExp (varex "sq", IntExp 4)) )
-    );
+          Expr.Fun (var "x", times (varex "x", varex "x")),
+          plus
+            ( Expr.App (varex "sq", Expr.Int 3),
+              Expr.App (varex "sq", Expr.Int 4) ) ) );
     ( "Q43",
       Value.Int 25,
       [],
-      LetExp
+      Expr.Let
         ( var "sm",
-          FunExp
+          Expr.Fun
             ( var "f",
-              plus (AppExp (varex "f", IntExp 3), AppExp (varex "f", IntExp 4))
-            ),
-          AppExp (varex "sm", FunExp (var "x", times (varex "x", varex "x"))) )
-    );
+              plus
+                ( Expr.App (varex "f", Expr.Int 3),
+                  Expr.App (varex "f", Expr.Int 4) ) ),
+          Expr.App (varex "sm", Expr.Fun (var "x", times (varex "x", varex "x")))
+        ) );
     ( "Q44",
       Value.Int 5,
       [],
-      LetExp
+      Expr.Let
         ( var "max",
-          FunExp
+          Expr.Fun
             ( var "x",
-              FunExp
+              Expr.Fun
                 ( var "y",
-                  IfExp (lt (varex "x", varex "y"), varex "y", varex "x") ) ),
-          AppExp (AppExp (varex "max", IntExp 3), IntExp 5) ) );
+                  Expr.If (lt (varex "x", varex "y"), varex "y", varex "x") ) ),
+          Expr.App (Expr.App (varex "max", Expr.Int 3), Expr.Int 5) ) );
     ( "Q50",
       Value.Int 6,
       [],
-      LetRecExp
+      Expr.LetRec
         ( var "fact",
           var "n",
-          IfExp
-            ( lt (varex "n", IntExp 2),
-              IntExp 1,
-              times (varex "n", call ("fact", minus (varex "n", IntExp 1))) ),
-          call ("fact", IntExp 3) ) );
+          Expr.If
+            ( lt (varex "n", Expr.Int 2),
+              Expr.Int 1,
+              times (varex "n", call ("fact", minus (varex "n", Expr.Int 1))) ),
+          call ("fact", Expr.Int 3) ) );
   ]
 
 let tests_ml3 =
@@ -189,44 +191,50 @@ let tests_ml3 =
 
 let cases_ml1 =
   [
-    ("Q25", Value.Int 8, BOpExp (PlusOp, IntExp 3, IntExp 5));
+    ("Q25", Value.Int 8, Expr.BOp (PlusOp, Expr.Int 3, Expr.Int 5));
     ( "Q26",
       Value.Int 3,
-      BOpExp (MinusOp, BOpExp (MinusOp, IntExp 8, IntExp 2), IntExp 3) );
+      Expr.BOp (MinusOp, Expr.BOp (MinusOp, Expr.Int 8, Expr.Int 2), Expr.Int 3)
+    );
     ( "Q27",
       Value.Int ~-81,
-      BOpExp
+      Expr.BOp
         ( TimesOp,
-          BOpExp (PlusOp, IntExp 4, IntExp 5),
-          BOpExp (MinusOp, IntExp 1, IntExp 10) ) );
+          Expr.BOp (PlusOp, Expr.Int 4, Expr.Int 5),
+          Expr.BOp (MinusOp, Expr.Int 1, Expr.Int 10) ) );
     ( "Q28",
       Value.Int 5,
-      IfExp
-        ( BOpExp (LtOp, IntExp 4, IntExp 5),
-          BOpExp (PlusOp, IntExp 2, IntExp 3),
-          BOpExp (TimesOp, IntExp 8, IntExp 8) ) );
+      Expr.If
+        ( Expr.BOp (LtOp, Expr.Int 4, Expr.Int 5),
+          Expr.BOp (PlusOp, Expr.Int 2, Expr.Int 3),
+          Expr.BOp (TimesOp, Expr.Int 8, Expr.Int 8) ) );
     ( "Q29",
       Value.Int 11,
-      BOpExp
+      Expr.BOp
         ( PlusOp,
-          IntExp 3,
-          IfExp
-            ( BOpExp (LtOp, IntExp ~-23, BOpExp (TimesOp, IntExp ~-2, IntExp 8)),
-              IntExp 8,
-              BOpExp (PlusOp, IntExp 2, IntExp 4) ) ) );
+          Expr.Int 3,
+          Expr.If
+            ( Expr.BOp
+                ( LtOp,
+                  Expr.Int ~-23,
+                  Expr.BOp (TimesOp, Expr.Int ~-2, Expr.Int 8) ),
+              Expr.Int 8,
+              Expr.BOp (PlusOp, Expr.Int 2, Expr.Int 4) ) ) );
     ( "Q30",
       Value.Int 15,
-      BOpExp
+      Expr.BOp
         ( PlusOp,
-          BOpExp
+          Expr.BOp
             ( PlusOp,
-              IntExp 3,
-              IfExp
-                ( BOpExp
-                    (LtOp, IntExp ~-23, BOpExp (TimesOp, IntExp ~-2, IntExp 8)),
-                  IntExp 8,
-                  IntExp 2 ) ),
-          IntExp 4 ) );
+              Expr.Int 3,
+              Expr.If
+                ( Expr.BOp
+                    ( LtOp,
+                      Expr.Int ~-23,
+                      Expr.BOp (TimesOp, Expr.Int ~-2, Expr.Int 8) ),
+                  Expr.Int 8,
+                  Expr.Int 2 ) ),
+          Expr.Int 4 ) );
   ]
 
 let tests_ml1 =
