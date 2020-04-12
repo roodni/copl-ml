@@ -17,14 +17,21 @@
 %token DEREF
 %token SLASH
 %token EVALTO
+%token CONS
+%token NIL
+%token MATCH
+%token WITH
+%token BAR
 
-%nonassoc prec_let prec_fun prec_letrec
+%nonassoc prec_let prec_fun prec_letrec prec_match
+%nonassoc BAR
 %nonassoc prec_if
 %right ASSIGN
 %left LT
+%right CONS
 %left PLUS MINUS
 %left TIMES
-%nonassoc INT TRUE FALSE LPAREN VAR DEREF
+%nonassoc INT TRUE FALSE LPAREN VAR DEREF NIL
 
 %start toplevel
 %type <Toplevel.t> toplevel
@@ -83,6 +90,8 @@ expr :
       { Expr.LetRec (f, a, e1, e2) }
   | l=expr ASSIGN r=expr { Expr.BOp (AssignOp, l, r) }
   | REF e=simple { Expr.Ref e }
+  | l=expr CONS r=expr { Expr.BOp (ConsOp, l, r) }
+  | MATCH e=expr WITH c=clauses { Expr.Match (e, c) }
 
 simple :
   | i=INT { Expr.Int i }
@@ -91,6 +100,16 @@ simple :
   | LPAREN e=expr RPAREN { e }
   | v=VAR { Expr.Var v }
   | DEREF e=simple { Expr.Deref e }
+  | NIL { Expr.Nil }
+
+clauses :
+  | p=pat RIGHTARROW e=expr %prec prec_match { [ (p, e) ] }
+  | p=pat RIGHTARROW e=expr BAR c=clauses { (p, e) :: c }
+
+pat :
+  | v=VAR { if Var.to_string v = "_" then Expr.WildPat else Expr.VarPat v }
+  | NIL { Expr.NilPat }
+  | l=pat CONS r=pat { Expr.ConsPat (l, r) }
 
 loc_name :
   | value SLASH l=LOC EQ { l }

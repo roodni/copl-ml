@@ -11,6 +11,8 @@ let reserved = [
   ("rec", Parser.REC);
   ("ref", Parser.REF);
   ("evalto", Parser.EVALTO);
+  ("match", Parser.MATCH);
+  ("with", Parser.WITH);
 ]
 }
 
@@ -43,3 +45,6 @@ rule main = parse
   | ":=" { Parser.ASSIGN }
   | "!" { Parser.DEREF }
   | "/" { Parser.SLASH }
+  | "::" { Parser.CONS }
+  | "[]" { Parser.NIL }
+  | "|" { Parser.BAR }

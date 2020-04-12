@@ -223,6 +223,7 @@ let eval system evalee =
               in
               ((value, store), EDeref, [ premise ])
           | _ -> error (sprintf "%s must be loc" (Expr.to_string e)) )
+      | _ -> assert false
     in
     (evaled, { concl = EvalJ { evalee; evaled }; rule; premises })
   in

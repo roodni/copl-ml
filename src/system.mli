@@ -1,1 +1,1 @@
-type t = EvalML1 | EvalML3 | EvalRefML3
+type t = EvalML1 | EvalML3 | EvalRefML3 | EvalML4

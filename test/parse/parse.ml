@@ -23,17 +23,17 @@ let times (l, r) = Expr.BOp (TimesOp, l, r)
 
 let lt (l, r) = Expr.BOp (LtOp, l, r)
 
-let assign (l, r) = Expr.BOp (AssignOp, l, r)
-
 let var = Var.of_string
 
 let varex s = Expr.Var (var s)
 
 let varint (v, i) = (var v, Value.Int i)
 
-let call (s, e) = Expr.App (varex s, e)
-
 let lexp (v, e1, e2) = Expr.Let (var v, e1, e2)
+
+let fexp (v, e) = Expr.Fun (var v, e)
+
+let call (s, e) = Expr.App (varex s, e)
 
 let loc = Loc.of_string
 
@@ -50,6 +50,60 @@ let refint i = Expr.Ref (Expr.Int i)
 let refvar v = Expr.Ref (varex v)
 
 let derefv s = Expr.Deref (varex s)
+
+let assign (l, r) = Expr.BOp (AssignOp, l, r)
+
+let cons (l, r) = Expr.BOp (ConsOp, l, r)
+
+let icons (i, l) = cons (Expr.Int i, l)
+
+let ml4match (e, nil_e, cons_v1, cons_v2, cons_e) =
+  Expr.Match
+    ( e,
+      [
+        (NilPat, nil_e);
+        (ConsPat (VarPat (var cons_v1), VarPat (var cons_v2)), cons_e);
+      ] )
+
+let cases_ml4 =
+  [
+    ( "Q70",
+      [],
+      cons
+        ( plus (Expr.Int 1, Expr.Int 2),
+          cons (plus (Expr.Int 3, Expr.Int 4), Expr.Nil) ),
+      "|- (1 + 2) :: (3 + 4) :: []" );
+    ( "Q71",
+      [],
+      lexp
+        ( "f",
+          fexp ("x", ml4match (varex "x", Expr.Int 0, "a", "b", varex "a")),
+          plus
+            ( plus (call ("f", icons (4, Expr.Nil)), call ("f", Expr.Nil)),
+              call ("f", icons (1, icons (2, icons (3, Expr.Nil)))) ) ),
+      "|- let f = fun x -> match x with [] -> 0 | a :: b -> a in f (4::[]) + f \
+       [] + f (1 :: 2 :: 3 :: [])" );
+    ( "nested match",
+      [],
+      ml4match
+        ( Expr.Nil,
+          ml4match (Expr.Nil, Expr.Int 1, "x", "y", varex "x"),
+          "a",
+          "b",
+          Expr.If
+            ( Expr.Bool false,
+              varex "a",
+              ml4match (Expr.Nil, Expr.Int 2, "c", "d", varex "c") ) ),
+      "|- match [] with [] -> (match [] with [] -> 1 | x :: y -> x) | a :: b \
+       -> if false then a else (match [] with [] -> 2 | c :: d -> c)" );
+  ]
+
+let tests_ml4 =
+  "ML4"
+  >::: List.map
+         (fun (title, env, expr, str) ->
+           parse_and_reparse_test title ~env expr str)
+         cases_ml4
 
 let cases_refml3 =
   [
@@ -302,4 +356,6 @@ let tests_ml1 =
          (fun (title, exp, str) -> parse_and_reparse_test title exp str)
          cases_ml1
 
-let () = run_test_tt_main ("tests" >::: [ tests_ml1; tests_ml3; tests_refml3 ])
+let () =
+  run_test_tt_main
+    ("tests" >::: [ tests_ml1; tests_ml3; tests_refml3; tests_ml4 ])
