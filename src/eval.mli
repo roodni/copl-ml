@@ -9,3 +9,14 @@ type ed = Value.t * Store.t
 val ed_to_string : ed -> string
 
 val ed_of_value : Value.t -> ed
+
+(* 評価導出システム *)
+module EDeriv : sig
+  type t
+
+  val output : ?indent:int -> ?outchan:out_channel -> t -> unit
+end
+
+exception Error of string * Expr.t
+
+val eval : Mlver.t -> ee -> ed * EDeriv.t
