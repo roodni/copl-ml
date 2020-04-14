@@ -63,7 +63,7 @@ let rule_to_string = function
   | EMatchCons -> "E-MatchCons"
 
 type judgment =
-  | EvalJ of { evalee : Evalee.t; evaled : Evaled.t }
+  | EvalJ of { evalee : Eval.ee; evaled : Eval.ed }
   | PlusJ of int * int * int
   | MinusJ of int * int * int
   | TimesJ of int * int * int
@@ -71,7 +71,8 @@ type judgment =
 
 let judgment_to_string = function
   | EvalJ { evalee; evaled } ->
-      sprintf "%s evalto %s" (Evalee.to_string evalee) (Evaled.to_string evaled)
+      sprintf "%s evalto %s" (Eval.ee_to_string evalee)
+        (Eval.ed_to_string evaled)
   | PlusJ (l, r, s) -> sprintf "%d plus %d is %d" l r s
   | MinusJ (l, r, d) -> sprintf "%d minus %d is %d" l r d
   | TimesJ (l, r, p) -> sprintf "%d times %d is %d" l r p
@@ -95,12 +96,12 @@ let rec output ?(indent = 0) ?(outchan = stdout) { premises; rule; concl } =
     output_indent indent;
     printf "};\n" )
 
-exception EvalError of string * Expr.t
+exception Error of string * Expr.t
 
 let eval system evalee =
   let rec eval evalee =
-    let Evalee.{ store; env; expr } = evalee in
-    let error s = raise @@ EvalError (s, expr) in
+    let Eval.{ store; env; expr } = evalee in
+    let error s = raise @@ Error (s, expr) in
     let evaled, rule, premises =
       match expr with
       | Expr.Int i -> ((Value.Int i, store), EInt, [])
@@ -168,7 +169,7 @@ let eval system evalee =
           | System.EvalML1 | System.EvalML3 -> (
               match env with
               | (v', value) :: _ when v = v' ->
-                  (Evaled.of_value value, EVar1, [])
+                  (Eval.ed_of_value value, EVar1, [])
               | (_, _) :: tail ->
                   let evaled, premise = eval { evalee with env = tail } in
                   (evaled, EVar2, [ premise ])
@@ -231,11 +232,11 @@ let eval system evalee =
               in
               ((value, store), EDeref, [ premise ])
           | _ -> error (sprintf "%s must be loc" (Expr.to_string e)) )
-      | Expr.Nil -> (Evaled.of_value Value.Nil, ENil, [])
+      | Expr.Nil -> (Eval.ed_of_value Value.Nil, ENil, [])
       | Expr.BOp (ConsOp, l, r) ->
           let (lvalue, _), lderiv = eval { evalee with expr = l } in
           let (rvalue, _), rderiv = eval { evalee with expr = r } in
-          ( Evaled.of_value @@ Value.Cons (lvalue, rvalue),
+          ( Eval.ed_of_value @@ Value.Cons (lvalue, rvalue),
             ECons,
             [ lderiv; rderiv ] )
       | Expr.Match (e1, clauses) -> (
@@ -250,7 +251,7 @@ let eval system evalee =
                   match value with
                   | Value.Nil ->
                       let (value, _), deriv2 = eval { evalee with expr = e2 } in
-                      (Evaled.of_value value, EMatchNil, [ deriv1; deriv2 ])
+                      (Eval.ed_of_value value, EMatchNil, [ deriv1; deriv2 ])
                   | Value.Cons (v1, v2) ->
                       let (value, _), deriv3 =
                         eval
@@ -260,7 +261,7 @@ let eval system evalee =
                             expr = e3;
                           }
                       in
-                      (Evaled.of_value value, EMatchCons, [ deriv1; deriv3 ])
+                      (Eval.ed_of_value value, EMatchCons, [ deriv1; deriv3 ])
                   | _ -> error @@ sprintf "%s is not list" (Expr.to_string e1) )
               | _ -> assert false )
           | _ -> assert false )

@@ -15,7 +15,7 @@ let eval_input_to_deriv () =
   let evalee = Toplevel.to_evalee toplevel in
   let evaled, deriv =
     try Deriv.eval system evalee
-    with Deriv.EvalError (er, ex) ->
+    with Deriv.Error (er, ex) ->
       eprintf "%s: %s\n" er (Expr.to_string ex);
       exit 1
   in
@@ -35,7 +35,7 @@ let eval_input_to_deriv () =
           in
           loc :: get_locs (num - 1)
       in
-      let locnum = Evaled.store evaled |> Store.binds |> List.length in
+      let locnum = snd evaled |> Store.binds |> List.length in
       let locs = get_locs locnum in
       let values = Store.binds evalee.store |> List.split |> snd in
       Deriv.eval system { evalee with store = Store.create locs values } |> snd

@@ -2,17 +2,17 @@ open OUnit2
 open Evalml
 
 let parse_and_reparse_test title ?(store = Store.empty) ?(env = []) expr str =
-  let expected = Evalee.{ store; env; expr } in
+  let expected = Eval.{ store; env; expr } in
   let parse s =
     Toplevel.to_evalee @@ Parser.toplevel Lexer.main (Lexing.from_string s)
   in
   title
   >::: [
          ( "parse" >:: fun _ ->
-           assert_equal ~printer:Evalee.to_string expected (parse str) );
+           assert_equal ~printer:Eval.ee_to_string expected (parse str) );
          ( "reparse" >:: fun _ ->
-           assert_equal ~printer:Evalee.to_string expected
-             (Evalee.to_string expected |> parse) );
+           assert_equal ~printer:Eval.ee_to_string expected
+             (Eval.ee_to_string expected |> parse) );
        ]
 
 let plus (l, r) = Expr.BOp (PlusOp, l, r)

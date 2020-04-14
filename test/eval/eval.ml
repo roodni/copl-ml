@@ -3,10 +3,10 @@ open Evalml
 
 let eval_test system title value ?(stores = (Store.empty, Store.empty))
     ?(env = []) expr =
-  let expected = Evaled.to_string (value, fst stores) in
+  let expected = Eval.ed_to_string (value, fst stores) in
   let evaled, _ = Deriv.eval system { store = snd stores; env; expr } in
   title >:: fun _ ->
-  assert_equal ~printer:(fun x -> x) expected (Evaled.to_string evaled)
+  assert_equal ~printer:(fun x -> x) expected (Eval.ed_to_string evaled)
 
 let plus (l, r) = Expr.BOp (PlusOp, l, r)
 
