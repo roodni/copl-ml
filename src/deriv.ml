@@ -136,7 +136,7 @@ let eval system evalee =
                     let i = li * ri in
                     let erule, brule =
                       match system with
-                      | System.EvalRefML3 -> (EMult, BMult)
+                      | Mlver.EvalRefML3 -> (EMult, BMult)
                       | _ -> (ETimes, BTimes)
                     in
                     (Value.Int i, erule, TimesJ (li, ri, i), brule)
@@ -166,7 +166,7 @@ let eval system evalee =
           | _ -> error (sprintf "%s is not loc" (Expr.to_string lexpr)) )
       | Expr.Var v -> (
           match system with
-          | System.EvalML1 | System.EvalML3 -> (
+          | Mlver.EvalML1 | Mlver.EvalML3 -> (
               match env with
               | (v', value) :: _ when v = v' ->
                   (Eval.ed_of_value value, EVar1, [])
@@ -174,7 +174,7 @@ let eval system evalee =
                   let evaled, premise = eval { evalee with env = tail } in
                   (evaled, EVar2, [ premise ])
               | [] -> error "Undeclared variable" )
-          | System.EvalRefML3 | System.EvalML4 ->
+          | Mlver.EvalRefML3 | Mlver.EvalML4 ->
               (* 1 step var *)
               let value =
                 try List.assoc v env
@@ -242,7 +242,7 @@ let eval system evalee =
       | Expr.Match (e1, clauses) -> (
           let (value, _), deriv1 = eval { evalee with expr = e1 } in
           match system with
-          | System.EvalML4 -> (
+          | Mlver.EvalML4 -> (
               match clauses with
               | [
                (Expr.NilPat, e2);

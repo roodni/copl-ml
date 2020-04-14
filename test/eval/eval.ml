@@ -86,7 +86,7 @@ let tests_ml4 =
   "ML4"
   >::: List.map
          (fun (title, value, env, expr) ->
-           eval_test System.EvalML4 title value ~env expr)
+           eval_test EvalML4 title value ~env expr)
          cases_ml4
 
 let cases_refml3 =
