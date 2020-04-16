@@ -113,6 +113,7 @@ pat :
   | v=VAR { if Var.to_string v = "_" then Expr.WildPat else Expr.VarPat v }
   | NIL { Expr.NilPat }
   | l=pat CONS r=pat { Expr.ConsPat (l, r) }
+  | LPAREN p=pat RPAREN { p }
 
 loc_name :
   | value SLASH l=LOC EQ { l }

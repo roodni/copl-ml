@@ -15,7 +15,12 @@ type pat = VarPat of Var.t | NilPat | ConsPat of pat * pat | WildPat
 let rec pat_to_string = function
   | VarPat v -> Var.to_string v
   | NilPat -> "[]"
-  | ConsPat (p1, p2) -> sprintf "%s :: %s" (pat_to_string p1) (pat_to_string p2)
+  | ConsPat (l, r) ->
+      let lp = pat_to_string l in
+      let rp = pat_to_string r in
+      sprintf "%s :: %s"
+        (match l with ConsPat _ -> "(" ^ lp ^ ")" | _ -> lp)
+        rp
   | WildPat -> "_"
 
 type t =
