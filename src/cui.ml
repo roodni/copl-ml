@@ -11,16 +11,16 @@ let eval_input_to_deriv () =
         eprintf "syntax error\n";
         exit 1
   in
-  let system = Mlver.EvalML5 in
+  let ver = Mlver.ML5 in
   let evalee = Toplevel.to_evalee toplevel in
   let evaled, deriv =
-    try Eval.eval system evalee
+    try Eval.eval ver evalee
     with Eval.Error (er, ex) ->
       eprintf "%s: %s\n" er (Expr.to_string ex);
       exit 1
   in
   let deriv =
-    if system = EvalRefML3 && Toplevel.is_judg toplevel then
+    if ver = RefML3 && Toplevel.is_judg toplevel then
       let rec get_locs num =
         if num = 0 then []
         else
@@ -38,7 +38,7 @@ let eval_input_to_deriv () =
       let locnum = snd evaled |> Store.binds |> List.length in
       let locs = get_locs locnum in
       let values = Store.binds evalee.store |> List.split |> snd in
-      Eval.eval system { evalee with store = Store.create locs values } |> snd
+      Eval.eval ver { evalee with store = Store.create locs values } |> snd
     else deriv
   in
   Eval.EDeriv.output deriv

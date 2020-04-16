@@ -176,7 +176,7 @@ let eval mlver evalee =
                     let i = li * ri in
                     let erule, brule =
                       match mlver with
-                      | Mlver.EvalRefML3 -> (EMult, BMult)
+                      | Mlver.RefML3 -> (EMult, BMult)
                       | _ -> (ETimes, BTimes)
                     in
                     (Value.Int i, erule, TimesJ (li, ri, i), brule)
@@ -208,14 +208,14 @@ let eval mlver evalee =
           | _ -> error (sprintf "%s is not loc" (Expr.to_string lexpr)) )
       | Expr.Var v -> (
           match mlver with
-          | EvalML1 | EvalML3 -> (
+          | ML1 | ML3 -> (
               match env with
               | (v', value) :: _ when v = v' -> (ed_of_value value, EVar1, [])
               | (_, _) :: tail ->
                   let evaled, premise = eval { evalee with env = tail } in
                   (evaled, EVar2, [ premise ])
               | [] -> error "Undeclared variable" )
-          | EvalRefML3 | EvalML4 | EvalML5 ->
+          | RefML3 | ML4 | ML5 ->
               (* 1 step var *)
               let value =
                 try List.assoc v env
@@ -281,7 +281,7 @@ let eval mlver evalee =
       | Expr.Match (e1, clauses) -> (
           let (value, _), deriv1 = eval { evalee with expr = e1 } in
           match mlver with
-          | EvalML4 -> (
+          | ML4 -> (
               match clauses with
               | [
                (Expr.NilPat, e2);
@@ -303,7 +303,7 @@ let eval mlver evalee =
                       (ed_of_value value, EMatchCons, [ deriv1; deriv3 ])
                   | _ -> error @@ sprintf "%s is not list" (Expr.to_string e1) )
               | _ -> failwith "Illegal match clauses in ML4" )
-          | EvalML5 -> (
+          | ML5 -> (
               match clauses with
               | (pat, e2) :: rest -> (
                   let m, deriv2 =
