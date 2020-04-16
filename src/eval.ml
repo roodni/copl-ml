@@ -48,6 +48,17 @@ module System = struct
     | ECons
     | EMatchNil
     | EMatchCons
+    | MVar
+    | MNil
+    | MCons
+    | MWild
+    | NMConsNil
+    | NMNilCons
+    | NMConsConsL
+    | NMConsConsR
+    | EMatchM1
+    | EMatchM2
+    | EMatchN
 
   let rule_to_string = function
     | EInt -> "E-Int"
@@ -79,6 +90,19 @@ module System = struct
     | ECons -> "E-Cons"
     | EMatchNil -> "E-MatchNil"
     | EMatchCons -> "E-MatchCons"
+    | MVar -> "M-Var"
+    | MNil -> "M-Nil"
+    | MCons -> "M-Cons"
+    | MWild -> "M-Wild"
+    | NMConsNil -> "NM-ConsNil"
+    | NMNilCons -> "NM-NilCons"
+    | NMConsConsL -> "NM-ConsConsL"
+    | NMConsConsR -> "NM-ConsConsR"
+    | EMatchM1 -> "E-MatchM1"
+    | EMatchM2 -> "E-MatchM2"
+    | EMatchN -> "E-MatchN"
+
+  type matched = Value.env option
 
   type judgment =
     | EvalJ of { evalee : ee; evaled : ed }
@@ -86,6 +110,7 @@ module System = struct
     | MinusJ of int * int * int
     | TimesJ of int * int * int
     | LtJ of int * int * bool
+    | MatchJ of Expr.pat * Value.t * matched
 
   let judgment_to_string = function
     | EvalJ { evalee; evaled } ->
@@ -94,11 +119,23 @@ module System = struct
     | MinusJ (l, r, d) -> sprintf "%d minus %d is %d" l r d
     | TimesJ (l, r, p) -> sprintf "%d times %d is %d" l r p
     | LtJ (l, r, b) -> sprintf "%d less than %d is %b" l r b
+    | MatchJ (p, v, m) -> (
+        match m with
+        | Some e ->
+            sprintf "%s matches %s when (%s)" (Expr.pat_to_string p)
+              (Value.to_string v) (Value.env_to_string e)
+        | None ->
+            sprintf "%s doesn't match %s" (Expr.pat_to_string p)
+              (Value.to_string v) )
 end
 
 module EDeriv = Deriv.Make (System)
 
 exception Error of string * Expr.t
+
+exception ML5_match_type_error of string * Expr.t
+
+exception ML5_match_failure of Expr.t
 
 let eval mlver evalee =
   let open System in
@@ -178,7 +215,7 @@ let eval mlver evalee =
                   let evaled, premise = eval { evalee with env = tail } in
                   (evaled, EVar2, [ premise ])
               | [] -> error "Undeclared variable" )
-          | EvalRefML3 | EvalML4 ->
+          | EvalRefML3 | EvalML4 | EvalML5 ->
               (* 1 step var *)
               let value =
                 try List.assoc v env
@@ -265,9 +302,56 @@ let eval mlver evalee =
                       in
                       (ed_of_value value, EMatchCons, [ deriv1; deriv3 ])
                   | _ -> error @@ sprintf "%s is not list" (Expr.to_string e1) )
-              | _ -> assert false )
-          | _ -> assert false )
+              | _ -> failwith "Illegal match clauses in ML4" )
+          | EvalML5 -> (
+              match clauses with
+              | (pat, e2) :: rest -> (
+                  let m, deriv2 =
+                    try ml5match pat value
+                    with Failure s -> raise @@ ML5_match_type_error (s, expr)
+                  in
+                  match m with
+                  | Some env1 ->
+                      let evaled, deriv3 =
+                        eval { evalee with env = env1 @ env; expr = e2 }
+                      in
+                      ( evaled,
+                        (if rest = [] then EMatchM1 else EMatchM2),
+                        [ deriv1; deriv2; deriv3 ] )
+                  | None ->
+                      let evaled, deriv3 =
+                        try
+                          eval { evalee with expr = Expr.Match (e1, rest) }
+                        with
+                        | ML5_match_type_error (s, _) ->
+                            raise @@ ML5_match_type_error (s, expr)
+                        | ML5_match_failure _ -> raise @@ ML5_match_failure expr
+                      in
+                      (evaled, EMatchN, [ deriv1; deriv2; deriv3 ]) )
+              | _ -> raise @@ ML5_match_failure expr )
+          | _ -> failwith "Illegal match expression" )
     in
     (evaled, EDeriv.{ concl = EvalJ { evalee; evaled }; rule; premises })
+  and ml5match p v =
+    let matched, rule, premises =
+      match (p, v) with
+      | Expr.VarPat x, _ -> (Some [ (x, v) ], MVar, [])
+      | Expr.NilPat, Value.Nil -> (Some [], MNil, [])
+      | Expr.NilPat, Value.Cons _ -> (None, NMConsNil, [])
+      | Expr.ConsPat (p1, p2), Value.Cons (v1, v2) -> (
+          let m1, deriv1 = ml5match p1 v1 in
+          let m2, deriv2 = ml5match p2 v2 in
+          match (m1, m2) with
+          | Some e1, Some e2 -> (Some (e2 @ e1), MCons, [ deriv1; deriv2 ])
+          | None, _ -> (None, NMConsConsL, [ deriv1 ])
+          | _, None -> (None, NMConsConsR, [ deriv2 ]) )
+      | Expr.ConsPat _, Value.Nil -> (None, NMNilCons, [])
+      | Expr.WildPat, _ -> (Some [], MWild, [])
+      | _ -> failwith @@ sprintf "%s" (Expr.pat_to_string p)
+    in
+    (matched, EDeriv.{ concl = MatchJ (p, v, matched); rule; premises })
   in
-  eval evalee
+  try eval evalee with
+  | ML5_match_type_error (s, e) ->
+      raise @@ Error (sprintf "Match type error (%s)" s, e)
+  | ML5_match_failure e -> raise @@ Error ("Match failure", e)

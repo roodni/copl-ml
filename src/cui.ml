@@ -11,7 +11,7 @@ let eval_input_to_deriv () =
         eprintf "syntax error\n";
         exit 1
   in
-  let system = Mlver.EvalML4 in
+  let system = Mlver.EvalML5 in
   let evalee = Toplevel.to_evalee toplevel in
   let evaled, deriv =
     try Eval.eval system evalee

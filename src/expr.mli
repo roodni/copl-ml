@@ -2,6 +2,8 @@ type binOp = PlusOp | MinusOp | TimesOp | LtOp | AssignOp | ConsOp
 
 type pat = VarPat of Var.t | NilPat | ConsPat of pat * pat | WildPat
 
+val pat_to_string : pat -> string
+
 type t =
   | Int of int
   | Bool of bool
