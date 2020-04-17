@@ -13,7 +13,7 @@ let () =
         exit 1
   in
   let ver = Mlver.ML5 in
-  let evalee = Toplevel.to_evalee toplevel in
+  let evalee = Eval.ee_of_toplevel toplevel in
   let evaled, deriv =
     try Eval.eval ver evalee
     with Eval.Error (er, ex) ->
@@ -21,7 +21,7 @@ let () =
       exit 1
   in
   let deriv =
-    if ver = RefML3 && Toplevel.is_judg toplevel then
+    if ver = RefML3 && toplevel.input_type = Judg then
       let rec get_locs num =
         if num = 0 then []
         else

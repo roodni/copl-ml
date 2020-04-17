@@ -4,7 +4,7 @@ open Evalml
 let parse_and_reparse_test title ?(store = Store.empty) ?(env = []) expr str =
   let expected = Eval.{ store; env; expr } in
   let parse s =
-    Toplevel.to_evalee @@ Parser.toplevel Lexer.main (Lexing.from_string s)
+    Eval.ee_of_toplevel @@ Parser.toplevel Lexer.main (Lexing.from_string s)
   in
   title
   >::: [

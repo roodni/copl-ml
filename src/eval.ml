@@ -9,6 +9,13 @@ let ee_to_string { store; env; expr } =
   and s_expr = Expr.to_string expr in
   s_store ^ s_env ^ s_expr
 
+let ee_of_toplevel Toplevel.{ store; env; expr; _ } =
+  {
+    store = Option.value ~default:Store.empty store;
+    env = Option.value ~default:[] env;
+    expr;
+  }
+
 type ed = Value.t * Store.t
 
 let ed_to_string (value, store) =
