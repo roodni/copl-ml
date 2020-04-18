@@ -140,35 +140,30 @@ module EDeriv = Deriv.Make (System)
 
 exception Error of string * Expr.t
 
-exception ML5_match_type_error of string * Expr.t
-
-exception ML5_match_failure of Expr.t
-
 let eval mlver evalee =
   let open System in
-  let rec eval evalee =
+  let rec eval ?ml5_match_root evalee =
     let { store; env; expr } = evalee in
+    let ee_create ?(store = store) ?(env = env) expr = { store; env; expr } in
     let error s = raise @@ Error (s, expr) in
     let evaled, rule, premises =
       match expr with
       | Expr.Int i -> ((Value.Int i, store), EInt, [])
       | Expr.Bool b -> ((Value.Bool b, store), EBool, [])
       | Expr.If (c, t, f) ->
-          let (cvalue, store), cderiv = eval { evalee with expr = c } in
+          let (cvalue, store), cderiv = eval @@ ee_create c in
           let retexpr, rule =
             match cvalue with
             | Value.Bool true -> (t, EIfT)
             | Value.Bool false -> (f, EIfF)
             | _ -> error "Condition must be bool"
           in
-          let ret, retderiv = eval { evalee with store; expr = retexpr } in
+          let ret, retderiv = eval @@ ee_create ~store retexpr in
           (ret, rule, [ cderiv; retderiv ])
       | Expr.BOp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr)
         -> (
-          let (lvalue, store), lderiv = eval { evalee with expr = lexpr } in
-          let (rvalue, store), rderiv =
-            eval { evalee with store; expr = rexpr }
-          in
+          let (lvalue, store), lderiv = eval @@ ee_create lexpr in
+          let (rvalue, store), rderiv = eval @@ ee_create ~store rexpr in
           match (lvalue, rvalue) with
           | Value.Int li, Value.Int ri ->
               let value, erule, bjudg, brule =
@@ -201,10 +196,8 @@ let eval mlver evalee =
                 ] )
           | _ -> error "Both arguments must be int" )
       | Expr.BOp (AssignOp, lexpr, rexpr) -> (
-          let (lvalue, store), lderiv = eval { evalee with expr = lexpr } in
-          let (rvalue, store), rderiv =
-            eval { evalee with store; expr = rexpr }
-          in
+          let (lvalue, store), lderiv = eval @@ ee_create lexpr in
+          let (rvalue, store), rderiv = eval @@ ee_create ~store rexpr in
           match lvalue with
           | Value.Loc loc ->
               let store =
@@ -219,7 +212,7 @@ let eval mlver evalee =
               match env with
               | (v', value) :: _ when v = v' -> (ed_of_value value, EVar1, [])
               | (_, _) :: tail ->
-                  let evaled, premise = eval { evalee with env = tail } in
+                  let evaled, premise = eval @@ ee_create ~env:tail expr in
                   (evaled, EVar2, [ premise ])
               | [] -> error "Undeclared variable" )
           | RefML3 | ML4 | ML5 ->
@@ -230,19 +223,19 @@ let eval mlver evalee =
               in
               ((value, store), EVar, []) )
       | Expr.Let (v, e1, e2) ->
-          let (value1, store), deriv1 = eval { evalee with expr = e1 } in
+          let (value1, store), deriv1 = eval @@ ee_create e1 in
           let (value2, store), deriv2 =
-            eval { store; env = (v, value1) :: env; expr = e2 }
+            eval @@ ee_create ~store ~env:((v, value1) :: env) e2
           in
           ((value2, store), ELet, [ deriv1; deriv2 ])
       | Expr.Fun (v, e) -> ((Value.Fun (env, v, e), store), EFun, [])
       | Expr.App (e1, e2) -> (
-          let (fval, store), fderiv = eval { evalee with expr = e1 } in
-          let (aval, store), aderiv = eval { evalee with store; expr = e2 } in
+          let (fval, store), fderiv = eval @@ ee_create e1 in
+          let (aval, store), aderiv = eval @@ ee_create ~store e2 in
           match fval with
           | Value.Fun (fenv, avar, fexpr) ->
               let evaled, deriv =
-                eval { store; env = (avar, aval) :: fenv; expr = fexpr }
+                eval @@ ee_create ~store ~env:((avar, aval) :: fenv) fexpr
               in
               (evaled, EApp, [ fderiv; aderiv; deriv ])
           | Value.RecFun (fenv, fvar, avar, fexpr) ->
@@ -267,11 +260,11 @@ let eval mlver evalee =
           in
           (evaled, ELetRec, [ premise ])
       | Expr.Ref e ->
-          let (value, store), premise = eval { evalee with expr = e } in
+          let (value, store), premise = eval @@ ee_create e in
           let loc, store = Store.make_ref store value in
           ((Value.Loc loc, store), ERef, [ premise ])
       | Expr.Deref e -> (
-          let (value, store), premise = eval { evalee with expr = e } in
+          let (value, store), premise = eval @@ ee_create e in
           match value with
           | Value.Loc loc ->
               let value =
@@ -282,11 +275,11 @@ let eval mlver evalee =
           | _ -> error (sprintf "%s must be loc" (Expr.to_string e)) )
       | Expr.Nil -> (ed_of_value Value.Nil, ENil, [])
       | Expr.BOp (ConsOp, l, r) ->
-          let (lvalue, _), lderiv = eval { evalee with expr = l } in
-          let (rvalue, _), rderiv = eval { evalee with expr = r } in
+          let (lvalue, _), lderiv = eval @@ ee_create l in
+          let (rvalue, _), rderiv = eval @@ ee_create r in
           (ed_of_value @@ Value.Cons (lvalue, rvalue), ECons, [ lderiv; rderiv ])
       | Expr.Match (e1, clauses) -> (
-          let (value, _), deriv1 = eval { evalee with expr = e1 } in
+          let (value, _), deriv1 = eval @@ ee_create e1 in
           match mlver with
           | ML4 -> (
               match clauses with
@@ -296,7 +289,7 @@ let eval mlver evalee =
               ] -> (
                   match value with
                   | Value.Nil ->
-                      let (value, _), deriv2 = eval { evalee with expr = e2 } in
+                      let (value, _), deriv2 = eval @@ ee_create e2 in
                       (ed_of_value value, EMatchNil, [ deriv1; deriv2 ])
                   | Value.Cons (v1, v2) ->
                       let (value, _), deriv3 =
@@ -311,31 +304,31 @@ let eval mlver evalee =
                   | _ -> error @@ sprintf "%s is not list" (Expr.to_string e1) )
               | _ -> failwith "Illegal match clauses in ML4" )
           | ML5 -> (
+              let ml5_match_root = Option.value ~default:expr ml5_match_root in
               match clauses with
               | (pat, e2) :: rest -> (
                   let m, deriv2 =
                     try ml5match pat value
-                    with Failure s -> raise @@ ML5_match_type_error (s, expr)
+                    with Failure s ->
+                      raise
+                      @@ Error
+                           (sprintf "Pattern type error (%s)" s, ml5_match_root)
                   in
                   match m with
                   | Some env1 ->
                       let evaled, deriv3 =
-                        eval { evalee with env = env1 @ env; expr = e2 }
+                        eval @@ ee_create ~env:(env1 @ env) e2
                       in
                       ( evaled,
                         (if rest = [] then EMatchM1 else EMatchM2),
                         [ deriv1; deriv2; deriv3 ] )
                   | None ->
                       let evaled, deriv3 =
-                        try
-                          eval { evalee with expr = Expr.Match (e1, rest) }
-                        with
-                        | ML5_match_type_error (s, _) ->
-                            raise @@ ML5_match_type_error (s, expr)
-                        | ML5_match_failure _ -> raise @@ ML5_match_failure expr
+                        eval ~ml5_match_root
+                        @@ ee_create (Expr.Match (e1, rest))
                       in
                       (evaled, EMatchN, [ deriv1; deriv2; deriv3 ]) )
-              | _ -> raise @@ ML5_match_failure expr )
+              | _ -> raise @@ Error ("Match failure", ml5_match_root) )
           | _ -> failwith "Illegal match expression" )
     in
     (evaled, EDeriv.{ concl = EvalJ { evalee; evaled }; rule; premises })
@@ -358,7 +351,4 @@ let eval mlver evalee =
     in
     (matched, EDeriv.{ concl = MatchJ (p, v, matched); rule; premises })
   in
-  try eval evalee with
-  | ML5_match_type_error (s, e) ->
-      raise @@ Error (sprintf "Match type error (%s)" s, e)
-  | ML5_match_failure e -> raise @@ Error ("Match failure", e)
+  eval evalee
