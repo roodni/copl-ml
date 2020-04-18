@@ -1,12 +1,27 @@
 open OUnit2
 open Evalml
 
-let eval_test system title value ?(stores = (Store.empty, Store.empty))
+let eval_test mlver title value ?(stores = (Store.empty, Store.empty))
     ?(env = []) expr =
-  let expected = Eval.ed_to_string (value, fst stores) in
-  let evaled, _ = Eval.eval system { store = snd stores; env; expr } in
-  title >:: fun _ ->
-  assert_equal ~printer:(fun x -> x) expected (Eval.ed_to_string evaled)
+  let evalee = Eval.ee_create mlver ~store:(snd stores) ~env expr in
+  title
+  >::: [
+         ( "eval" >:: fun _ ->
+           let expected = (value, fst stores) in
+           let evaled, _ = Eval.eval evalee in
+           assert_equal ~cmp:Eval.ed_equal ~printer:Eval.ed_to_string expected
+             evaled );
+         ( "reparse" >:: fun _ ->
+           let toplevel =
+             Parser.toplevel Lexer.main
+               (Lexing.from_string @@ Eval.ee_to_string evalee)
+           in
+           let evalee' =
+             Eval.ee_create mlver ?store:toplevel.store ?env:toplevel.env
+               toplevel.expr
+           in
+           assert_equal ~printer:Eval.ee_to_string evalee evalee' );
+       ]
 
 let plus (l, r) = Expr.BOp (PlusOp, l, r)
 

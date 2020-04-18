@@ -1,19 +1,10 @@
 open OUnit2
 open Evalml
 
-let parse_and_reparse_test title ?(store = Store.empty) ?(env = []) expr str =
-  let expected = Eval.{ store; env; expr } in
-  let parse s =
-    Eval.ee_of_toplevel @@ Parser.toplevel Lexer.main (Lexing.from_string s)
-  in
-  title
-  >::: [
-         ( "parse" >:: fun _ ->
-           assert_equal ~printer:Eval.ee_to_string expected (parse str) );
-         ( "reparse" >:: fun _ ->
-           assert_equal ~printer:Eval.ee_to_string expected
-             (Eval.ee_to_string expected |> parse) );
-       ]
+let parse_test title ?store ?env expr str =
+  let expected = Toplevel.create ?store ?env expr Eval in
+  let parse s = Parser.toplevel Lexer.main (Lexing.from_string s) in
+  title >:: fun _ -> assert_equal expected (parse str)
 
 let plus (l, r) = Expr.BOp (PlusOp, l, r)
 
@@ -116,8 +107,7 @@ let cases_ml4 =
 let tests_ml4 =
   "ML4"
   >::: List.map
-         (fun (title, env, expr, str) ->
-           parse_and_reparse_test title ~env expr str)
+         (fun (title, env, expr, str) -> parse_test title ~env expr str)
          cases_ml4
 
 let cases_refml3 =
@@ -160,10 +150,12 @@ let tests_refml3 =
   >::: List.map
          (fun (title, store, env, exp, str) ->
            let store =
-             let locs, values = List.split store in
-             Store.create locs values
+             if store = [] then None
+             else
+               let locs, values = List.split store in
+               Some (Store.create locs values)
            in
-           parse_and_reparse_test title ~store ~env exp str)
+           parse_test title ?store ~env exp str)
          cases_refml3
 
 (* 環境を含む *)
@@ -244,7 +236,7 @@ let cases_ml3 =
     ( "1 + f 2",
       [],
       plus (Expr.Int 1, Expr.App (varex "f", Expr.Int 2)),
-      "1 + f 2" );
+      "|- 1 + f 2" );
     ( "fun env",
       [
         ( var "f",
@@ -288,8 +280,7 @@ let cases_ml3 =
 let tests_ml3 =
   "ML3"
   >::: List.map
-         (fun (title, env, expr, str) ->
-           parse_and_reparse_test title ~env expr str)
+         (fun (title, env, expr, str) -> parse_test title ~env expr str)
          cases_ml3
 
 let cases_ml1 =
@@ -367,9 +358,7 @@ let cases_ml1 =
 
 let tests_ml1 =
   "ML1"
-  >::: List.map
-         (fun (title, exp, str) -> parse_and_reparse_test title exp str)
-         cases_ml1
+  >::: List.map (fun (title, exp, str) -> parse_test title exp str) cases_ml1
 
 let () =
   run_test_tt_main

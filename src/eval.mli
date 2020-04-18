@@ -1,7 +1,7 @@
 (* 評価されるもの *)
-type ee = { store : Store.t; env : Value.env; expr : Expr.t }
+type ee
 
-val ee_of_toplevel : Toplevel.t -> ee
+val ee_create : Mlver.t -> ?store:Store.t -> ?env:Value.env -> Expr.t -> ee
 
 val ee_to_string : ee -> string
 
@@ -9,6 +9,8 @@ val ee_to_string : ee -> string
 type ed = Value.t * Store.t
 
 val ed_to_string : ed -> string
+
+val ed_equal : ed -> ed -> bool
 
 (* 評価導出システム *)
 module EDeriv : sig
@@ -19,4 +21,4 @@ end
 
 exception Error of string * Expr.t
 
-val eval : Mlver.t -> ee -> ed * EDeriv.t
+val eval : ee -> ed * EDeriv.t

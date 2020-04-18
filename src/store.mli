@@ -17,3 +17,5 @@ val to_string : t -> string
 val is_empty : t -> bool
 
 val binds : t -> (Loc.t * Value.t) list
+
+val equal : t -> t -> bool

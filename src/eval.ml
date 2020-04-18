@@ -1,20 +1,16 @@
 open Printf
 
-type ee = { store : Store.t; env : Value.env; expr : Expr.t }
+type ee = { store : Store.t; env : Value.env; expr : Expr.t; mlver : Mlver.t }
 
-let ee_to_string { store; env; expr } =
+let ee_create mlver ?(store = Store.empty) ?(env = []) expr =
+  { store; env; expr; mlver }
+
+let ee_to_string { store; env; expr; _ } =
   let s_store =
     if Store.is_empty store then "" else Store.to_string store ^ " / "
   and s_env = (if env <> [] then Value.env_to_string env ^ " " else "") ^ "|- "
   and s_expr = Expr.to_string expr in
   s_store ^ s_env ^ s_expr
-
-let ee_of_toplevel Toplevel.{ store; env; expr; _ } =
-  {
-    store = Option.value ~default:Store.empty store;
-    env = Option.value ~default:[] env;
-    expr;
-  }
 
 type ed = Value.t * Store.t
 
@@ -23,6 +19,8 @@ let ed_to_string (value, store) =
   ^ if Store.is_empty store then "" else " / " ^ Store.to_string store
 
 let ed_of_value value = (value, Store.empty)
+
+let ed_equal (v1, s1) (v2, s2) = v1 = v2 && Store.equal s1 s2
 
 module System = struct
   type rule =
@@ -140,11 +138,13 @@ module EDeriv = Deriv.Make (System)
 
 exception Error of string * Expr.t
 
-let eval mlver evalee =
+let eval evalee =
   let open System in
   let rec eval ?ml5_match_root evalee =
-    let { store; env; expr } = evalee in
-    let ee_create ?(store = store) ?(env = env) expr = { store; env; expr } in
+    let { store; env; expr; mlver } = evalee in
+    let ee_create ?(store = store) ?(env = env) expr =
+      { store; env; expr; mlver }
+    in
     let error s = raise @@ Error (s, expr) in
     let evaled, rule, premises =
       match expr with
@@ -241,22 +241,16 @@ let eval mlver evalee =
           | Value.RecFun (fenv, fvar, avar, fexpr) ->
               let evaled, deriv =
                 eval
-                  {
-                    store;
-                    env = (avar, aval) :: (fvar, fval) :: fenv;
-                    expr = fexpr;
-                  }
+                @@ ee_create ~store
+                     ~env:((avar, aval) :: (fvar, fval) :: fenv)
+                     fexpr
               in
+
               (evaled, EAppRec, [ fderiv; aderiv; deriv ])
           | _ -> error (sprintf "%s cannot be applied" (Expr.to_string e1)) )
       | Expr.LetRec (f, a, e1, e2) ->
           let evaled, premise =
-            eval
-              {
-                evalee with
-                env = (f, Value.RecFun (env, f, a, e1)) :: env;
-                expr = e2;
-              }
+            eval @@ ee_create ~env:((f, Value.RecFun (env, f, a, e1)) :: env) e2
           in
           (evaled, ELetRec, [ premise ])
       | Expr.Ref e ->
@@ -293,12 +287,7 @@ let eval mlver evalee =
                       (ed_of_value value, EMatchNil, [ deriv1; deriv2 ])
                   | Value.Cons (v1, v2) ->
                       let (value, _), deriv3 =
-                        eval
-                          {
-                            evalee with
-                            env = (y, v2) :: (x, v1) :: env;
-                            expr = e3;
-                          }
+                        eval @@ ee_create ~env:((y, v2) :: (x, v1) :: env) e3
                       in
                       (ed_of_value value, EMatchCons, [ deriv1; deriv3 ])
                   | _ -> error @@ sprintf "%s is not list" (Expr.to_string e1) )

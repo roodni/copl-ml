@@ -50,3 +50,5 @@ let to_string t =
 let is_empty { binds; _ } = binds = []
 
 let binds t = t.binds
+
+let equal t1 t2 = t1.binds = t2.binds
