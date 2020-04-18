@@ -9,10 +9,21 @@ let () =
         eprintf "%s\n" e;
         exit 1
     | Parser.Error ->
-        eprintf "syntax error\n";
+        eprintf "Syntax error\n";
         exit 1
   in
-  let ver = Mlver.ML5 in
+  let ver =
+    try Mlver.detect toplevel with
+    | Mlver.Error (v1, v2) ->
+        eprintf "ML version detection failed: %s | %s\n" (Mlver.to_string v1)
+          (Mlver.to_string v2);
+        exit 1
+    | Mlver.Empty_match_clauses e ->
+        eprintf "Empty match clauses: %s\n" (Expr.to_string e);
+        exit 1
+  in
+  eprintf "ML version: %s\n" (Mlver.to_string ver);
+  flush stderr;
   let evalee = Eval.ee_of_toplevel toplevel in
   let evaled, deriv =
     try Eval.eval ver evalee
