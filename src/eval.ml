@@ -5,10 +5,13 @@ type ee = { store : Store.t; env : Value.env; expr : Expr.t; mlver : Mlver.t }
 let ee_create mlver ?(store = Store.empty) ?(env = []) expr =
   { store; env; expr; mlver }
 
-let ee_to_string { store; env; expr; _ } =
+let ee_to_string { store; env; expr; mlver } =
   let s_store =
     if Store.is_empty store then "" else Store.to_string store ^ " / "
-  and s_env = (if env <> [] then Value.env_to_string env ^ " " else "") ^ "|- "
+  and s_env =
+    if mlver = Mlver.ML1 then ""
+    else if env = [] then "|- "
+    else sprintf "%s |- " (Value.env_to_string env)
   and s_expr = Expr.to_string expr in
   s_store ^ s_env ^ s_expr
 
