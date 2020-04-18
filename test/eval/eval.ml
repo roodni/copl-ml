@@ -1,5 +1,5 @@
 open OUnit2
-open Evalml
+open Coplml
 
 let eval_test mlver title value ?(stores = (Store.empty, Store.empty))
     ?(env = []) expr =

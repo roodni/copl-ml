@@ -1,5 +1,5 @@
 open OUnit2
-open Evalml
+open Coplml
 
 let parse_test title ?store ?env expr str =
   let expected = Toplevel.create ?store ?env expr Eval in

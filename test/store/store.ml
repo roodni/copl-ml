@@ -1,5 +1,5 @@
 open OUnit2
-open Evalml
+open Coplml
 
 let binds l = List.rev_map (fun (l, i) -> (Loc.of_string l, Value.Int i)) l
 
