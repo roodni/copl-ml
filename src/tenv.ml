@@ -2,7 +2,7 @@ type t = (Var.t * Types.t) list
 
 let rec to_string env =
   let bind_to_string (var, ty) =
-    Printf.sprintf "%s = %s" (Var.to_string var) (Types.to_string ty)
+    Printf.sprintf "%s : %s" (Var.to_string var) (Types.to_string ty)
   in
   match env with
   | [] -> ""
