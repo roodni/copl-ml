@@ -6,4 +6,4 @@ exception Error of t * t
 
 exception Empty_match_clauses of Expr.t
 
-val detect : Toplevel.t -> t
+val detect : ?store:Store.t -> ?env:Value.env -> Expr.t -> t

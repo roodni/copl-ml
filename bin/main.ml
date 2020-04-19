@@ -13,7 +13,7 @@ let () =
         exit 1
   in
   let mlver =
-    try Mlver.detect toplevel with
+    try Mlver.detect ?store:toplevel.store ?env:toplevel.env toplevel.expr with
     | Mlver.Error (v1, v2) ->
         eprintf "ML version detection failed: %s | %s\n" (Mlver.to_string v1)
           (Mlver.to_string v2);

@@ -22,7 +22,7 @@ exception Error of t * t
 
 exception Empty_match_clauses of Expr.t
 
-let detect Toplevel.{ store; env; expr; _ } =
+let detect ?store ?env expr =
   let vmax e l =
     List.fold_left
       (fun v1 v2 ->
