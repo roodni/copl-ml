@@ -60,4 +60,5 @@ let () =
         else deriv
       in
       Eval.EDeriv.output deriv
-  | _ -> assert false
+  | Typing { tenv; expr } ->
+      eprintf "%s |- %s\n" (Tenv.to_string tenv) (Expr.to_string expr)

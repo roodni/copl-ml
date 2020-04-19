@@ -13,6 +13,9 @@ let reserved = [
   ("evalto", Parser.EVALTO);
   ("match", Parser.MATCH);
   ("with", Parser.WITH);
+  ("int", Parser.INTT);
+  ("bool", Parser.BOOLT);
+  ("list", Parser.LISTT)
 ]
 }
 
@@ -48,3 +51,4 @@ rule main = parse
   | "::" { Parser.CONS }
   | "[]" { Parser.NIL }
   | "|" { Parser.BAR }
+  | ":" { Parser.COLON }

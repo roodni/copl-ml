@@ -12,16 +12,16 @@
 %token LBRACKET RBRACKET
 %token REC
 %token <Loc.t> LOC
-%token REF
-%token ASSIGN
-%token DEREF
+%token REF ASSIGN DEREF
 %token SLASH
 %token EVALTO
-%token CONS
-%token NIL
-%token MATCH
-%token WITH
-%token BAR
+%token CONS NIL
+%token MATCH WITH BAR
+%token COLON
+%token INTT BOOLT LISTT
+
+%right RIGHTARROW
+%nonassoc LISTT
 
 %nonassoc prec_let prec_fun prec_letrec prec_match
 %nonassoc BAR
@@ -40,12 +40,21 @@
 %%
 
 toplevel :
-  | e=expr END { Toplevel.create_eval e ~is_judg:false }
-  | e=expr EVALTO { Toplevel.create_eval e ~is_judg:true }
-  | en=env TURNSTILE ex=expr END { Toplevel.create_eval ~env:en ex ~is_judg:false }
-  | en=env TURNSTILE ex=expr EVALTO { Toplevel.create_eval ~env:en ex ~is_judg:true }
-  | s=store SLASH en=env TURNSTILE ex=expr END { Toplevel.create_eval ~store:s ~env:en ex ~is_judg:false }
-  | s=store SLASH en=env TURNSTILE ex=expr EVALTO { Toplevel.create_eval ~store:s ~env:en ex ~is_judg:true }
+  | e=expr is_judg=eval_end { Toplevel.create_eval e ~is_judg }
+  | en=env_not_empty TURNSTILE ex=expr is_judg=eval_end
+      { Toplevel.create_eval ~env:en ex ~is_judg }
+  | s=store SLASH en=env TURNSTILE ex=expr is_judg=eval_end
+      { Toplevel.create_eval ~store:s ~env:en ex ~is_judg }
+  | t=type_env_not_empty TURNSTILE e=expr COLON
+      { Toplevel.Typing { tenv = t; expr = e } }
+  | TURNSTILE e=expr is_judg=eval_end
+      { Toplevel.create_eval ~env:[] e ~is_judg }
+  | TURNSTILE e=expr COLON
+      { Toplevel.Typing { tenv = []; expr = e } }
+
+eval_end :
+  | END { false }
+  | EVALTO { true }
 
 store :
   | s=store_binds { let l, v = List.split s in Store.create l v }
@@ -60,8 +69,11 @@ store_bind :
 
 env :
   | { [] }
+  | e=env_not_empty { e }
+
+env_not_empty :
   | b=bind { [b] }
-  | e=env COMMA b=bind { b :: e }
+  | e=env_not_empty COMMA b=bind { b :: e }
 
 bind :
   | var=VAR EQ value=value { (var, value) }
@@ -118,3 +130,21 @@ pat :
 loc_name :
   | value SLASH l=LOC EQ { l }
   | value COMMA l=LOC EQ { l }
+
+type_env :
+  | { [] }
+  | e=type_env_not_empty { e }
+
+type_env_not_empty :
+  | b=type_bind { [b] }
+  | e=type_env_not_empty COMMA b=type_bind { b :: e }
+
+type_bind :
+  | v=VAR COLON t=types { (v, t) }
+
+types :
+  | INTT { Types.Int }
+  | BOOLT { Types.Bool }
+  | t=types LISTT { Types.List t }
+  | t1=types RIGHTARROW t2=types { Types.Fun (t1, t2) }
+  | LPAREN t=types RPAREN { t }
