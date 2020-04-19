@@ -40,12 +40,12 @@
 %%
 
 toplevel :
-  | e=expr END { Toplevel.create e Toplevel.Eval }
-  | e=expr EVALTO { Toplevel.create e Toplevel.Judg }
-  | en=env TURNSTILE ex=expr END { Toplevel.create ~env:en ex Toplevel.Eval }
-  | en=env TURNSTILE ex=expr EVALTO { Toplevel.create ~env:en ex Toplevel.Judg }
-  | s=store SLASH en=env TURNSTILE ex=expr END { Toplevel.create ~store:s ~env:en ex Toplevel.Eval }
-  | s=store SLASH en=env TURNSTILE ex=expr EVALTO { Toplevel.create ~store:s ~env:en ex Toplevel.Judg }
+  | e=expr END { Toplevel.create_eval e ~is_judg:false }
+  | e=expr EVALTO { Toplevel.create_eval e ~is_judg:true }
+  | en=env TURNSTILE ex=expr END { Toplevel.create_eval ~env:en ex ~is_judg:false }
+  | en=env TURNSTILE ex=expr EVALTO { Toplevel.create_eval ~env:en ex ~is_judg:true }
+  | s=store SLASH en=env TURNSTILE ex=expr END { Toplevel.create_eval ~store:s ~env:en ex ~is_judg:false }
+  | s=store SLASH en=env TURNSTILE ex=expr EVALTO { Toplevel.create_eval ~store:s ~env:en ex ~is_judg:true }
 
 store :
   | s=store_binds { let l, v = List.split s in Store.create l v }

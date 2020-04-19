@@ -2,7 +2,7 @@ open OUnit2
 open Coplml
 
 let parse_test title ?store ?env expr str =
-  let expected = Toplevel.create ?store ?env expr Eval in
+  let expected = Toplevel.create_eval ?store ?env expr ~is_judg:false in
   let parse s = Parser.toplevel Lexer.main (Lexing.from_string s) in
   title >:: fun _ -> assert_equal expected (parse str)
 

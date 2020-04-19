@@ -16,11 +16,11 @@ let eval_test mlver title value ?(stores = (Store.empty, Store.empty))
              Parser.toplevel Lexer.main
                (Lexing.from_string @@ Eval.ee_to_string evalee)
            in
-           let evalee' =
-             Eval.ee_create mlver ?store:toplevel.store ?env:toplevel.env
-               toplevel.expr
-           in
-           assert_equal ~printer:Eval.ee_to_string evalee evalee' );
+           match toplevel with
+           | Eval { store; env; expr; _ } ->
+               let evalee' = Eval.ee_create mlver ?store ?env expr in
+               assert_equal ~printer:Eval.ee_to_string evalee evalee'
+           | _ -> assert false );
        ]
 
 let plus (l, r) = Expr.BOp (PlusOp, l, r)

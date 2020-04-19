@@ -1,10 +1,10 @@
-type input_type = Judg | Eval
+type t =
+  | Eval of {
+      store : Store.t option;
+      env : Value.env option;
+      expr : Expr.t;
+      is_judg : bool;
+    }
+  | Typing of { tenv : Tenv.t; expr : Expr.t }
 
-type t = {
-  store : Store.t option;
-  env : Value.env option;
-  expr : Expr.t;
-  input_type : input_type;
-}
-
-let create ?store ?env expr input_type = { store; env; expr; input_type }
+let create_eval ?store ?env expr ~is_judg = Eval { store; env; expr; is_judg }
