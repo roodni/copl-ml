@@ -37,6 +37,8 @@
 %type <Toplevel.t> toplevel
 %start loc_name
 %type <Loc.t> loc_name
+%start types_expected
+%type <Types.t> types_expected
 %%
 
 toplevel :
@@ -131,10 +133,6 @@ loc_name :
   | value SLASH l=LOC EQ { l }
   | value COMMA l=LOC EQ { l }
 
-type_env :
-  | { [] }
-  | e=type_env_not_empty { e }
-
 type_env_not_empty :
   | b=type_bind { [b] }
   | e=type_env_not_empty COMMA b=type_bind { b :: e }
@@ -148,3 +146,6 @@ types :
   | t=types LISTT { Types.List t }
   | t1=types RIGHTARROW t2=types { Types.Fun (t1, t2) }
   | LPAREN t=types RPAREN { t }
+
+types_expected :
+  | t=types END { t }

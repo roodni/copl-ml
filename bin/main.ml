@@ -58,7 +58,7 @@ let () =
       in
       Eval.EDeriv.output deriv
   | Typing { tenv; expr } ->
-      let _, _, deriv =
+      let _, ty, deriv =
         try Typing.typing tenv expr with
         | Typing.Typing_failed ->
             eprintf "Typing failed\n";
@@ -66,5 +66,17 @@ let () =
         | Typing.Expr_error (s, e) ->
             eprintf "%s: %s\n" s (Expr.to_string e);
             exit 1
+      in
+      let deriv =
+        if Ftv.is_empty (Ftv.of_types ty) then deriv
+        else
+          let ty' = Parser.types_expected Lexer.main lexbuf in
+          let sub =
+            try Teqs.singleton (ty, ty') |> Teqs.unify
+            with Teqs.Unify_failed ->
+              eprintf "Expected type is wrong";
+              exit 1
+          in
+          Typing.substitute_deriv sub deriv
       in
       Typing.TDeriv.output deriv

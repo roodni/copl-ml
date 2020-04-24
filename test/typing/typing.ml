@@ -8,6 +8,13 @@ let parse_and_typing_test title str expected =
   match toplevel with
   | Typing { tenv; expr } ->
       let _, ty, _ = Typing.typing tenv expr in
+      let ty =
+        if Ftv.is_empty (Ftv.of_types ty) then ty
+        else
+          let ty' = Parser.types_expected Lexer.main lexbuf in
+          let sub = Teqs.singleton (ty, ty') |> Teqs.unify in
+          Tsub.substitute ty sub
+      in
       assert_equal ~printer:Types.to_string expected ty
   | _ -> assert false
 
