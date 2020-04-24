@@ -2,6 +2,8 @@ open Coplml
 open Printf
 
 let () =
+  eprintf "# ";
+  flush stderr;
   let lexbuf = Lexing.from_channel stdin in
   let toplevel =
     try Parser.toplevel Lexer.main lexbuf with
@@ -69,14 +71,24 @@ let () =
       in
       let deriv =
         if Ftv.is_empty (Ftv.of_types ty) then deriv
-        else
-          let ty' = Parser.types_expected Lexer.main lexbuf in
+        else (
+          eprintf "Free type variables appear: %s\n# " (Types.to_string ty);
+          flush stderr;
+          let ty' =
+            try Parser.types_expected Lexer.main lexbuf with
+            | Failure e ->
+                eprintf "%s\n" e;
+                exit 1
+            | Parser.Error ->
+                eprintf "Syntax error\n";
+                exit 1
+          in
           let sub =
             try Teqs.singleton (ty, ty') |> Teqs.unify
             with Teqs.Unify_failed ->
               eprintf "Expected type is wrong";
               exit 1
           in
-          Typing.substitute_deriv sub deriv
+          Typing.substitute_deriv sub deriv )
       in
       Typing.TDeriv.output deriv
