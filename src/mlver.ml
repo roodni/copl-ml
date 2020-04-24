@@ -1,11 +1,11 @@
 type t = ML1 | ML3 | RefML3 | ML4 | ML5
 
 let to_string = function
-  | ML1 -> "ML1"
-  | ML3 -> "ML3"
-  | RefML3 -> "RefML3"
-  | ML4 -> "ML4"
-  | ML5 -> "ML5"
+  | ML1 -> "EvalML1"
+  | ML3 -> "EvalML3"
+  | RefML3 -> "EvalRefML3"
+  | ML4 -> "EvalML4"
+  | ML5 -> "EvalML5"
 
 let parent = function
   | ML1 -> None
@@ -19,8 +19,6 @@ let rec ( <<= ) a b =
   else match parent b with None -> false | Some p -> a <<= p
 
 exception Error of t * t
-
-exception Empty_match_clauses of Expr.t
 
 let detect ?store ?env expr =
   let vmax e l =
@@ -48,7 +46,7 @@ let detect ?store ?env expr =
     | Expr.BOp (ConsOp, l, r) -> vmax ML4 (List.map expr_detect [ l; r ])
     | Expr.Match (e1, [ (NilPat, e2); (ConsPat (VarPat _, VarPat _), e3) ]) ->
         vmax ML4 (List.map expr_detect [ e1; e2; e3 ])
-    | Expr.Match (_, []) as e -> raise @@ Empty_match_clauses e
+    | Expr.Match (_, []) -> failwith "Empty match clauses"
     | Expr.Match (e1, clauses) ->
         vmax ML5 (List.map expr_detect (e1 :: List.map snd clauses))
   in

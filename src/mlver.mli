@@ -4,6 +4,4 @@ val to_string : t -> string
 
 exception Error of t * t
 
-exception Empty_match_clauses of Expr.t
-
 val detect : ?store:Store.t -> ?env:Value.env -> Expr.t -> t

@@ -15,16 +15,13 @@ let () =
   match toplevel with
   | Eval { store; env; expr; is_judg } ->
       let mlver =
-        try Mlver.detect ?store ?env expr with
-        | Mlver.Error (v1, v2) ->
-            eprintf "ML version detection failed: %s | %s\n"
-              (Mlver.to_string v1) (Mlver.to_string v2);
-            exit 1
-        | Mlver.Empty_match_clauses e ->
-            eprintf "Empty match clauses: %s\n" (Expr.to_string e);
-            exit 1
+        try Mlver.detect ?store ?env expr
+        with Mlver.Error (v1, v2) ->
+          eprintf "System detection failed: %s | %s\n" (Mlver.to_string v1)
+            (Mlver.to_string v2);
+          exit 1
       in
-      eprintf "ML version: %s\n" (Mlver.to_string mlver);
+      eprintf "System: %s\n" (Mlver.to_string mlver);
       flush stderr;
       let evalee = Eval.ee_create mlver ?store ?env expr in
       let evaled, deriv =
