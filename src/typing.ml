@@ -71,7 +71,7 @@ let typing tenv expr =
             |> Teqs.add (tt, ft)
             |> Teqs.unify
           in
-          (sub, Tsub.substitute tt sub, TIf, [ cderiv; tderiv; fderiv ])
+          (sub, tt, TIf, [ cderiv; tderiv; fderiv ])
       | Expr.BOp (((PlusOp | MinusOp | TimesOp | LtOp) as op), e1, e2) ->
           let s1, t1, deriv1 = principal tenv e1
           and s2, t2, deriv2 = principal tenv e2 in
@@ -89,7 +89,7 @@ let typing tenv expr =
             | LtOp -> TLt
             | _ -> assert false
           in
-          (sub, Tsub.substitute ty sub, rule, [ deriv1; deriv2 ])
+          (sub, ty, rule, [ deriv1; deriv2 ])
       | Expr.Var v ->
           let ty =
             try List.assoc v tenv
@@ -102,11 +102,11 @@ let typing tenv expr =
           let sub =
             [ s1; s2 ] |> List.map Teqs.of_tsub |> Teqs.union_list |> Teqs.unify
           in
-          (sub, Tsub.substitute t2 sub, TLet, [ deriv1; deriv2 ])
+          (sub, t2, TLet, [ deriv1; deriv2 ])
       | Expr.Fun (v, e) ->
           let a = Types.Var (Tvar.create ()) in
           let sub, ty, deriv = principal ((v, a) :: tenv) e in
-          (sub, Types.Fun (Tsub.substitute a sub, ty), TFun, [ deriv ])
+          (sub, Types.Fun (a, ty), TFun, [ deriv ])
       | Expr.App (e1, e2) ->
           let s1, t1, deriv1 = principal tenv e1
           and s2, t2, deriv2 = principal tenv e2 in
@@ -116,7 +116,7 @@ let typing tenv expr =
             |> Teqs.add (t1, Types.Fun (t2, a))
             |> Teqs.unify
           in
-          (sub, Tsub.substitute a sub, TApp, [ deriv1; deriv2 ])
+          (sub, a, TApp, [ deriv1; deriv2 ])
       | Expr.LetRec (f, v, e1, e2) ->
           let a = Types.Var (Tvar.create ())
           and b = Types.Var (Tvar.create ()) in
@@ -127,7 +127,7 @@ let typing tenv expr =
             |> Teqs.add (a, Types.Fun (b, t1))
             |> Teqs.unify
           in
-          (sub, Tsub.substitute t2 sub, TLetRec, [ deriv1; deriv2 ])
+          (sub, t2, TLetRec, [ deriv1; deriv2 ])
       | Expr.Nil ->
           let a = Types.Var (Tvar.create ()) in
           (Tsub.empty, Types.List a, TNil, [])
@@ -139,7 +139,7 @@ let typing tenv expr =
             |> Teqs.add (t2, Types.List t1)
             |> Teqs.unify
           in
-          (sub, Tsub.substitute t2 sub, TCons, [ deriv1; deriv2 ])
+          (sub, t2, TCons, [ deriv1; deriv2 ])
       | Expr.Match (e1, [ (NilPat, e2); (ConsPat (VarPat va, VarPat vb), e3) ])
         ->
           let a = Types.Var (Tvar.create ()) in
@@ -154,12 +154,30 @@ let typing tenv expr =
             |> Teqs.add (t2, t3)
             |> Teqs.unify
           in
-          (sub, Tsub.substitute t2 sub, TMatch, [ deriv1; deriv2; deriv3 ])
+          (sub, t2, TMatch, [ deriv1; deriv2; deriv3 ])
       | _ -> raise @@ Expr_error ("Not ML4 expression", expr)
     in
-    (sub, ty, TDeriv.{ concl = (tenv, expr, ty); rule; premises })
+    ( sub,
+      Tsub.substitute ty sub,
+      TDeriv.{ concl = (tenv, expr, ty); rule; premises } )
   in
   let sub, ty, deriv =
     try principal tenv expr with Teqs.Unify_failed -> raise Typing_failed
   in
-  (sub, ty, substitute_deriv sub deriv)
+  let deriv = substitute_deriv sub deriv in
+  let interface_ftv = Ftv.of_types ty in
+  let rec substitute_inside TDeriv.{ concl = tenv, expr, ty; rule; premises } =
+    let rec substitute = function
+      | (Types.Int | Types.Bool) as x -> x
+      | Types.Fun (x, y) -> Types.Fun (substitute x, substitute y)
+      | Types.List x -> Types.List (substitute x)
+      | Types.Var v ->
+          if Ftv.mem v interface_ftv then Types.Var v else Types.Bool
+    in
+    let tenv = List.map (fun (v, ty) -> (v, substitute ty)) tenv
+    and ty = substitute ty
+    and premises = List.map substitute_inside premises in
+    TDeriv.{ concl = (tenv, expr, ty); rule; premises }
+  in
+  let deriv = substitute_inside deriv in
+  (sub, ty, deriv)
