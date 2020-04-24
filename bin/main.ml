@@ -44,7 +44,7 @@ let () =
                     eprintf "%s\n" e;
                     exit 1
                 | Parser.Error ->
-                    eprintf "syntax error\n";
+                    eprintf "Syntax error\n";
                     exit 1
               in
               loc :: get_locs (num - 1)
@@ -61,4 +61,13 @@ let () =
       in
       Eval.EDeriv.output deriv
   | Typing { tenv; expr } ->
-      eprintf "%s |- %s\n" (Tenv.to_string tenv) (Expr.to_string expr)
+      let deriv =
+        try Typing.typing tenv expr with
+        | Typing.Typing_failed ->
+            eprintf "Typing failed\n";
+            exit 1
+        | Typing.Expr_error (s, e) ->
+            eprintf "%s: %s\n" s (Expr.to_string e);
+            exit 1
+      in
+      Typing.TDeriv.output deriv
