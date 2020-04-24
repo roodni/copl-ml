@@ -160,7 +160,7 @@ let typing tenv expr =
             |> Teqs.unify
           in
           (sub, Tsub.substitute a sub, TApp, [ deriv1; deriv2 ])
-      | Expr.LetRec (v, f, e1, e2) ->
+      | Expr.LetRec (f, v, e1, e2) ->
           let a = Types.Var (Tvar.create ())
           and b = Types.Var (Tvar.create ()) in
           let s1, t1, deriv1 = principal ((v, b) :: (f, a) :: tenv) e1 in
@@ -202,7 +202,7 @@ let typing tenv expr =
     in
     (sub, ty, TDeriv.{ concl = (tenv, expr, ty); rule; premises })
   in
-  let sub, _, deriv =
+  let sub, ty, deriv =
     try principal tenv expr with Teqs.Unify_failed -> raise Typing_failed
   in
   let rec substitute_deriv TDeriv.{ concl = tenv, expr, ty; rule; premises } =
@@ -211,4 +211,4 @@ let typing tenv expr =
     and premises = List.map substitute_deriv premises in
     TDeriv.{ concl = (tenv, expr, ty); rule; premises }
   in
-  substitute_deriv deriv
+  (sub, ty, substitute_deriv deriv)

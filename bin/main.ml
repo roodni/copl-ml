@@ -61,7 +61,7 @@ let () =
       in
       Eval.EDeriv.output deriv
   | Typing { tenv; expr } ->
-      let deriv =
+      let _, _, deriv =
         try Typing.typing tenv expr with
         | Typing.Typing_failed ->
             eprintf "Typing failed\n";

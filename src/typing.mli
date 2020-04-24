@@ -6,4 +6,4 @@ module System : Deriv.SYSTEM
 
 module TDeriv : module type of Deriv.Make (System)
 
-val typing : Tenv.t -> Expr.t -> TDeriv.t
+val typing : Tenv.t -> Expr.t -> Tsub.t * Types.t * TDeriv.t
