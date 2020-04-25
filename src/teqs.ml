@@ -19,8 +19,14 @@ let rec unify eqs =
       match (ty1, ty2) with
       | x, y when x = y -> unify eqs
       | Types.Var v, ty | ty, Types.Var v ->
-          if Ftv.mem v (Ftv.of_types ty) then raise Unify_failed
+          if Tvset.mem v (Types.ftv ty) then raise Unify_failed
           else
+            (* namedを優先して残す *)
+            let v, ty =
+              match ty with
+              | Types.Var v' when Tvar.is_named v -> (v', Types.Var v)
+              | _ -> (v, ty)
+            in
             let sub = Tsub.singleton v ty in
             let s =
               unify

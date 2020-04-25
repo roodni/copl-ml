@@ -1,14 +1,20 @@
 open Printf
 
-type t = int
+type t = Generated of int | Named of string
 
-let varnum = ref 0
+let varnum = ref 1
 
-let create () =
+let generate () =
   let v = !varnum in
   incr varnum;
-  v
+  Generated v
 
-let to_string t = sprintf "'a%d" t
+let of_name s = Named s
+
+let is_named = function Generated _ -> false | Named _ -> true
+
+let to_string = function
+  | Generated i -> sprintf "'_a%d" i
+  | Named s -> sprintf "'%s" s
 
 let compare a b = compare a b

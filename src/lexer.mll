@@ -52,3 +52,9 @@ rule main = parse
   | "[]" { Parser.NIL }
   | "|" { Parser.BAR }
   | ":" { Parser.COLON }
+  | "'" ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '\'']* {
+      let s = Lexing.lexeme lexbuf in
+      let id = String.sub s 1 (String.length s - 1) in
+      Parser.TVAR id
+    }
+  | "." { Parser.DOT }

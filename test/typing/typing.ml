@@ -7,9 +7,9 @@ let parse_and_typing_test title str expected =
   let toplevel = Parser.toplevel Lexer.main lexbuf in
   match toplevel with
   | Typing { tenv; expr } ->
-      let _, ty, _ = Typing.typing tenv expr in
+      let _, ty, _ = Typing.typing ~poly:false tenv expr in
       let ty =
-        if Ftv.is_empty (Ftv.of_types ty) then ty
+        if Tvset.is_empty (Types.ftv ty) then ty
         else
           let ty' = Parser.types_expected Lexer.main lexbuf in
           let sub = Teqs.singleton (ty, ty') |> Teqs.unify in

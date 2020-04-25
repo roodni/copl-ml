@@ -61,7 +61,7 @@ let () =
       Eval.EDeriv.output deriv
   | Typing { tenv; expr } ->
       let _, ty, deriv =
-        try Typing.typing tenv expr with
+        try Typing.typing ~poly:true tenv expr with
         | Typing.Typing_failed ->
             eprintf "Typing failed\n";
             exit 1
@@ -70,7 +70,7 @@ let () =
             exit 1
       in
       let deriv =
-        if Ftv.is_empty (Ftv.of_types ty) then deriv
+        if Tvset.is_empty (Types.ftv ty) then deriv
         else (
           eprintf "Free type variables appear: %s\n# " (Types.to_string ty);
           flush stderr;

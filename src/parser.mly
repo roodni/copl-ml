@@ -19,6 +19,8 @@
 %token MATCH WITH BAR
 %token COLON
 %token INTT BOOLT LISTT
+%token <string> TVAR
+%token DOT
 
 %right RIGHTARROW
 %nonassoc LISTT
@@ -138,7 +140,15 @@ type_env_not_empty :
   | e=type_env_not_empty COMMA b=type_bind { b :: e }
 
 type_bind :
-  | v=VAR COLON t=types { (v, t) }
+  | v=VAR COLON s=tyscheme { (v, s) }
+
+tyscheme :
+  | t=types { Tscheme.create [] t }
+  | l=tvars DOT t=types { Tscheme.create l t }
+
+tvars :
+  | v=tvar { [v] }
+  | v=tvar l=tvars { v :: l }
 
 types :
   | INTT { Types.Int }
@@ -146,6 +156,10 @@ types :
   | t=types LISTT { Types.List t }
   | t1=types RIGHTARROW t2=types { Types.Fun (t1, t2) }
   | LPAREN t=types RPAREN { t }
+  | v=tvar { Types.Var v }
+
+tvar :
+  | v=TVAR { Tvar.of_name v }
 
 types_expected :
   | t=types END { t }
