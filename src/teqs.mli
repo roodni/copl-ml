@@ -1,8 +1,4 @@
-include module type of Set.Make (struct
-  type t = Types.t * Types.t
-
-  let compare = compare
-end)
+include Set.S with type elt = Types.t * Types.t
 
 val of_tsub : Tsub.t -> t
 
