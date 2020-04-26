@@ -23,7 +23,7 @@ let ed_to_string (value, store) =
 
 let ed_of_value value = (value, Store.empty)
 
-let ed_equal (v1, s1) (v2, s2) = v1 = v2 && Store.equal s1 s2
+let ed_equal (v1, s1) (v2, s2) = (v1, Store.binds s1) = (v2, Store.binds s2)
 
 module System = struct
   type rule =
