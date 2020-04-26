@@ -39,13 +39,7 @@ let to_string t =
   let bind_to_string (loc, value) =
     sprintf "%s = %s" (Loc.to_string loc) (Value.to_string value)
   in
-  let rec binds_to_string = function
-    | [] -> ""
-    | [ bind ] -> bind_to_string bind
-    | bind :: rest ->
-        sprintf "%s, %s" (binds_to_string rest) (bind_to_string bind)
-  in
-  binds_to_string t.binds
+  t.binds |> List.rev_map bind_to_string |> String.concat ", "
 
 let is_empty { binds; _ } = binds = []
 

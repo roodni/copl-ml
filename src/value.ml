@@ -32,8 +32,4 @@ and env_to_string env =
   let bind_to_string (var, value) =
     Printf.sprintf "%s = %s" (Var.to_string var) (to_string value)
   in
-  match env with
-  | [] -> ""
-  | [ bind ] -> bind_to_string bind
-  | bind :: env' ->
-      Printf.sprintf "%s, %s" (env_to_string env') (bind_to_string bind)
+  env |> List.rev_map bind_to_string |> String.concat ", "

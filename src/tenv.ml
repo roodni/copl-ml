@@ -8,12 +8,8 @@ let ftv t =
 let substitute sub t =
   List.map (fun (v, sch) -> (v, Tscheme.substitute sub sch)) t
 
-let rec to_string env =
+let to_string env =
   let bind_to_string (var, sch) =
     Printf.sprintf "%s : %s" (Var.to_string var) (Tscheme.to_string sch)
   in
-  match env with
-  | [] -> ""
-  | [ bind ] -> bind_to_string bind
-  | bind :: env' ->
-      Printf.sprintf "%s, %s" (to_string env') (bind_to_string bind)
+  env |> List.rev_map bind_to_string |> String.concat ", "
