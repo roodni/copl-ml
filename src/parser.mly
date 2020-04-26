@@ -5,13 +5,13 @@
 %token LT PLUS MINUS TIMES
 %token IF THEN ELSE
 %token TURNSTILE
-%token <Var.t> VAR
+%token <string> VAR
 %token EQ COMMA
 %token LET IN
 %token FUN RIGHTARROW
 %token LBRACKET RBRACKET
 %token REC
-%token <Loc.t> LOC
+%token <string> LOC
 %token REF ASSIGN DEREF
 %token SLASH
 %token EVALTO
@@ -69,7 +69,10 @@ store_binds :
   | b=store_bind COMMA s=store_binds { b :: s }
 
 store_bind :
-  l=LOC EQ v=value  { (l, v) }
+  | l=loc EQ v=value  { (l, v) }
+
+loc :
+  | l=LOC { Loc.of_string l }
 
 env :
   | { [] }
@@ -80,17 +83,20 @@ env_not_empty :
   | e=env_not_empty COMMA b=bind { b :: e }
 
 bind :
-  | var=VAR EQ value=value { (var, value) }
+  | var=var EQ value=value { (var, value) }
+
+var :
+  | v=VAR { Var.of_string v }
 
 value :
   | i=INT { Value.Int i }
   | TRUE { Value.Bool true }
   | FALSE { Value.Bool false }
-  | LPAREN en=env RPAREN LBRACKET FUN v=VAR RIGHTARROW ex=expr RBRACKET
+  | LPAREN en=env RPAREN LBRACKET FUN v=var RIGHTARROW ex=expr RBRACKET
       { Value.Fun (en, v, ex) }
-  | LPAREN en=env RPAREN LBRACKET REC f=VAR EQ FUN a=VAR RIGHTARROW ex=expr RBRACKET
+  | LPAREN en=env RPAREN LBRACKET REC f=var EQ FUN a=var RIGHTARROW ex=expr RBRACKET
       { Value.RecFun (en, f, a, ex) }
-  | l=LOC { Value.Loc l }
+  | l=loc { Value.Loc l }
   | NIL { Value.Nil }
   | l=value CONS r=value { Value.Cons (l, r) }
   | LPAREN v=value RPAREN { v }
@@ -101,11 +107,11 @@ expr :
   | l=expr PLUS r=expr { Expr.BOp (PlusOp, l, r) }
   | l=expr MINUS r=expr { Expr.BOp (MinusOp, l, r) }
   | l=expr TIMES r=expr { Expr.BOp (TimesOp, l, r) }
-  | LET v=VAR EQ e1=expr IN e2=expr %prec prec_let { Expr.Let (v, e1, e2) }
-  | FUN v=VAR RIGHTARROW e=expr %prec prec_fun { Expr.Fun (v, e) }
+  | LET v=var EQ e1=expr IN e2=expr %prec prec_let { Expr.Let (v, e1, e2) }
+  | FUN v=var RIGHTARROW e=expr %prec prec_fun { Expr.Fun (v, e) }
   | l=expr r=simple { Expr.App (l, r) }
   | e=simple { e }
-  | LET REC f=VAR EQ FUN a=VAR RIGHTARROW e1=expr IN e2=expr %prec prec_letrec
+  | LET REC f=var EQ FUN a=var RIGHTARROW e1=expr IN e2=expr %prec prec_letrec
       { Expr.LetRec (f, a, e1, e2) }
   | l=expr ASSIGN r=expr { Expr.BOp (AssignOp, l, r) }
   | REF e=simple { Expr.Ref e }
@@ -117,7 +123,7 @@ simple :
   | TRUE { Expr.Bool true }
   | FALSE { Expr.Bool false }
   | LPAREN e=expr RPAREN { e }
-  | v=VAR { Expr.Var v }
+  | v=var { Expr.Var v }
   | DEREF e=simple { Expr.Deref e }
   | NIL { Expr.Nil }
 
@@ -126,21 +132,21 @@ clauses :
   | p=pat RIGHTARROW e=expr BAR c=clauses { (p, e) :: c }
 
 pat :
-  | v=VAR { if Var.to_string v = "_" then Expr.WildPat else Expr.VarPat v }
+  | v=var { if Var.to_string v = "_" then Expr.WildPat else Expr.VarPat v }
   | NIL { Expr.NilPat }
   | l=pat CONS r=pat { Expr.ConsPat (l, r) }
   | LPAREN p=pat RPAREN { p }
 
 loc_name :
-  | value SLASH l=LOC EQ { l }
-  | value COMMA l=LOC EQ { l }
+  | value SLASH l=loc EQ { l }
+  | value COMMA l=loc EQ { l }
 
 type_env_not_empty :
   | b=type_bind { [b] }
   | e=type_env_not_empty COMMA b=type_bind { b :: e }
 
 type_bind :
-  | v=VAR COLON s=tyscheme { (v, s) }
+  | v=var COLON s=tyscheme { (v, s) }
 
 tyscheme :
   | t=types { Tscheme.create [] t }

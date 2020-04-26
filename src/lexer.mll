@@ -31,7 +31,7 @@ rule main = parse
   | ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '\'']* {
       let id = Lexing.lexeme lexbuf in
       try List.assoc id reserved
-      with Not_found -> Parser.VAR (Var.of_string id)
+      with Not_found -> Parser.VAR id
     }
   | eof | ";;" { Parser.END }
   | "|-" { Parser.TURNSTILE }
@@ -43,7 +43,7 @@ rule main = parse
   | "@" ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '\'']* {
       let s = Lexing.lexeme lexbuf in
       let id = String.sub s 1 (String.length s - 1) in
-      Parser.LOC (Loc.of_string id)
+      Parser.LOC id
     }
   | ":=" { Parser.ASSIGN }
   | "!" { Parser.DEREF }
