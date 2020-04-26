@@ -1,17 +1,19 @@
 open OUnit2
-open Coplml
+open Typingml
 
 let parse_and_typing_test title str expected =
   title >:: fun _ ->
   let lexbuf = Lexing.from_string str in
-  let toplevel = Parser.toplevel Lexer.main lexbuf in
+  let toplevel = Cui.Parser.toplevel Cui.Lexer.main lexbuf in
   match toplevel with
   | Typing { tenv; expr } ->
       let _, ty, _ = Typing.typing ~poly:false tenv expr in
       let ty =
         if Tvset.is_empty (Types.ftv ty) then ty
         else
-          let ty' = Parser.types_expected Lexer.main lexbuf |> Option.get in
+          let ty' =
+            Cui.Parser.types_expected Cui.Lexer.main lexbuf |> Option.get
+          in
           let sub = Teqs.singleton (ty, ty') |> Teqs.unify in
           Tsub.substitute ty sub
       in

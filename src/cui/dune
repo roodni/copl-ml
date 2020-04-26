@@ -1,5 +1,6 @@
 (library
- (name coplml))
+ (name cui)
+ (libraries base evalml typingml))
 
 (menhir
  (modules parser)

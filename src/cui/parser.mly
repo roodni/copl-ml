@@ -1,3 +1,7 @@
+%{
+open Base
+%}
+
 %token END
 %token <int> INT
 %token TRUE FALSE
@@ -38,9 +42,9 @@
 %start toplevel
 %type <Toplevel.t> toplevel
 %start loc_name
-%type <Loc.t> loc_name
+%type <Evalml.Loc.t> loc_name
 %start types_expected
-%type <Types.t option> types_expected
+%type <Typingml.Types.t option> types_expected
 %%
 
 toplevel :
@@ -61,7 +65,7 @@ eval_end :
   | EVALTO { true }
 
 store :
-  | s=store_binds { let l, v = List.split s in Store.create l v }
+  | s=store_binds { let l, v = List.split s in Evalml.Store.create l v }
 
 store_binds :
   | { [] }
@@ -72,7 +76,7 @@ store_bind :
   | l=loc EQ v=value  { (l, v) }
 
 loc :
-  | l=LOC { Loc.of_string l }
+  | l=LOC { Evalml.Loc.of_string l }
 
 env :
   | { [] }
@@ -89,16 +93,16 @@ var :
   | v=VAR { Var.of_string v }
 
 value :
-  | i=INT { Value.Int i }
-  | TRUE { Value.Bool true }
-  | FALSE { Value.Bool false }
+  | i=INT { Evalml.Value.Int i }
+  | TRUE { Evalml.Value.Bool true }
+  | FALSE { Evalml.Value.Bool false }
   | LPAREN en=env RPAREN LBRACKET FUN v=var RIGHTARROW ex=expr RBRACKET
-      { Value.Fun (en, v, ex) }
+      { Evalml.Value.Fun (en, v, ex) }
   | LPAREN en=env RPAREN LBRACKET REC f=var EQ FUN a=var RIGHTARROW ex=expr RBRACKET
-      { Value.RecFun (en, f, a, ex) }
-  | l=loc { Value.Loc l }
-  | NIL { Value.Nil }
-  | l=value CONS r=value { Value.Cons (l, r) }
+      { Evalml.Value.RecFun (en, f, a, ex) }
+  | l=loc { Evalml.Value.Loc l }
+  | NIL { Evalml.Value.Nil }
+  | l=value CONS r=value { Evalml.Value.Cons (l, r) }
   | LPAREN v=value RPAREN { v }
 
 expr :
@@ -149,23 +153,23 @@ type_bind :
   | v=var COLON s=tyscheme { (v, s) }
 
 tyscheme :
-  | t=types { Tscheme.create [] t }
-  | l=tvars DOT t=types { Tscheme.create l t }
+  | t=types { Typingml.Tscheme.create [] t }
+  | l=tvars DOT t=types { Typingml.Tscheme.create l t }
 
 tvars :
   | v=tvar { [v] }
   | v=tvar l=tvars { v :: l }
 
 types :
-  | INTT { Types.Int }
-  | BOOLT { Types.Bool }
-  | t=types LISTT { Types.List t }
-  | t1=types RIGHTARROW t2=types { Types.Fun (t1, t2) }
+  | INTT { Typingml.Types.Int }
+  | BOOLT { Typingml.Types.Bool }
+  | t=types LISTT { Typingml.Types.List t }
+  | t1=types RIGHTARROW t2=types { Typingml.Types.Fun (t1, t2) }
   | LPAREN t=types RPAREN { t }
-  | v=tvar { Types.Var v }
+  | v=tvar { Typingml.Types.Var v }
 
 tvar :
-  | v=TVAR { Tvar.of_name v }
+  | v=TVAR { Typingml.Tvar.of_name v }
 
 types_expected :
   | END { None }

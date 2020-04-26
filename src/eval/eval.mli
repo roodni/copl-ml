@@ -1,3 +1,5 @@
+open Base
+
 (* 評価されるもの *)
 type ee
 

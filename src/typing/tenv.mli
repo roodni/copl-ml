@@ -1,3 +1,5 @@
+open Base
+
 type t = (Var.t * Tscheme.t) list
 
 val ftv : t -> Tvset.t

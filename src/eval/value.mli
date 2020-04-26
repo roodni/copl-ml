@@ -1,3 +1,5 @@
+open Base
+
 type t =
   | Int of int
   | Bool of bool

@@ -1,3 +1,4 @@
+open Base
 open Printf
 
 type ee = { store : Store.t; env : Value.env; expr : Expr.t; mlver : Mlver.t }

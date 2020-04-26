@@ -1,5 +1,6 @@
 open OUnit2
-open Coplml
+open Base
+open Evalml
 
 let eval_test mlver title value ?(stores = (Store.empty, Store.empty))
     ?(env = []) expr =
@@ -13,7 +14,7 @@ let eval_test mlver title value ?(stores = (Store.empty, Store.empty))
              evaled );
          ( "reparse" >:: fun _ ->
            let toplevel =
-             Parser.toplevel Lexer.main
+             Cui.Parser.toplevel Cui.Lexer.main
                (Lexing.from_string @@ Eval.ee_to_string evalee)
            in
            match toplevel with

@@ -1,3 +1,5 @@
+open Base
+
 exception Typing_failed
 
 exception Expr_error of string * Expr.t

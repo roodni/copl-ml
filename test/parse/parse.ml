@@ -1,9 +1,10 @@
 open OUnit2
-open Coplml
+open Base
+open Evalml
 
 let parse_test title ?store ?env expr str =
-  let expected = Toplevel.create_eval ?store ?env expr ~is_judg:false in
-  let parse s = Parser.toplevel Lexer.main (Lexing.from_string s) in
+  let expected = Cui.Toplevel.create_eval ?store ?env expr ~is_judg:false in
+  let parse s = Cui.Parser.toplevel Cui.Lexer.main (Lexing.from_string s) in
   title >:: fun _ -> assert_equal expected (parse str)
 
 let plus (l, r) = Expr.BOp (PlusOp, l, r)
