@@ -11,7 +11,7 @@ let parse_and_typing_test title str expected =
       let ty =
         if Tvset.is_empty (Types.ftv ty) then ty
         else
-          let ty' = Parser.types_expected Lexer.main lexbuf in
+          let ty' = Parser.types_expected Lexer.main lexbuf |> Option.get in
           let sub = Teqs.singleton (ty, ty') |> Teqs.unify in
           Tsub.substitute ty sub
       in

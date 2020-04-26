@@ -2,8 +2,16 @@ open Coplml
 open Printf
 
 let () =
-  eprintf "# ";
-  flush stderr;
+  let poly_typing = ref true in
+  Arg.parse
+    [
+      ( "--no-poly",
+        Arg.Clear poly_typing,
+        "Use TypingML4 instead of PolyTypingML4" );
+    ]
+    (fun s -> raise @@ Arg.Bad (sprintf "invalid argument '%s'" s))
+    "";
+  eprintf "# %!";
   let lexbuf = Lexing.from_channel stdin in
   let toplevel =
     try Parser.toplevel Lexer.main lexbuf with
@@ -19,12 +27,11 @@ let () =
       let mlver =
         try Mlver.detect ?store ?env expr
         with Mlver.Error (v1, v2) ->
-          eprintf "System detection failed: %s | %s\n" (Mlver.to_string v1)
+          eprintf "ML version detection failed: %s | %s\n" (Mlver.to_string v1)
             (Mlver.to_string v2);
           exit 1
       in
-      eprintf "System: %s\n" (Mlver.to_string mlver);
-      flush stderr;
+      eprintf "ML version: %s\n%!" (Mlver.to_string mlver);
       let evalee = Eval.ee_create mlver ?store ?env expr in
       let evaled, deriv =
         try Eval.eval evalee
@@ -61,7 +68,7 @@ let () =
       Eval.EDeriv.output deriv
   | Typing { tenv; expr } ->
       let _, ty, deriv =
-        try Typing.typing ~poly:true tenv expr with
+        try Typing.typing ~poly:!poly_typing tenv expr with
         | Typing.Typing_failed ->
             eprintf "Typing failed\n";
             exit 1
@@ -72,8 +79,7 @@ let () =
       let deriv =
         if Tvset.is_empty (Types.ftv ty) then deriv
         else (
-          eprintf "Free type variables appear: %s\n# " (Types.to_string ty);
-          flush stderr;
+          eprintf "Free type variables appear: %s\n# %!" (Types.to_string ty);
           let ty' =
             try Parser.types_expected Lexer.main lexbuf with
             | Failure e ->
@@ -83,12 +89,15 @@ let () =
                 eprintf "Syntax error\n";
                 exit 1
           in
-          let sub =
-            try Teqs.singleton (ty, ty') |> Teqs.unify
-            with Teqs.Unify_failed ->
-              eprintf "Expected type is wrong";
-              exit 1
-          in
-          Typing.substitute_deriv sub deriv )
+          match ty' with
+          | None -> deriv
+          | Some ty' ->
+              let sub =
+                try Teqs.singleton (ty, ty') |> Teqs.unify
+                with Teqs.Unify_failed ->
+                  eprintf "Expected type is wrong\n";
+                  exit 1
+              in
+              Typing.substitute_deriv sub deriv )
       in
       Typing.TDeriv.output deriv

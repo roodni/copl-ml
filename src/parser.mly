@@ -40,7 +40,7 @@
 %start loc_name
 %type <Loc.t> loc_name
 %start types_expected
-%type <Types.t> types_expected
+%type <Types.t option> types_expected
 %%
 
 toplevel :
@@ -162,4 +162,5 @@ tvar :
   | v=TVAR { Tvar.of_name v }
 
 types_expected :
-  | t=types END { t }
+  | END { None }
+  | t=types END { Some t }
