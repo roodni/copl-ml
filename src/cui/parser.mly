@@ -25,6 +25,7 @@ open Base
 %token INTT BOOLT LISTT
 %token <string> TVAR
 %token DOT
+%token UNDER
 
 %right RIGHTARROW
 %nonassoc LISTT
@@ -37,7 +38,7 @@ open Base
 %right CONS
 %left PLUS MINUS
 %left TIMES
-%nonassoc INT TRUE FALSE LPAREN VAR DEREF NIL
+%nonassoc INT TRUE FALSE LPAREN VAR DEREF NIL UNDER
 
 %start toplevel
 %type <Toplevel.t> toplevel
@@ -91,6 +92,7 @@ bind :
 
 var :
   | v=VAR { Var.of_string v }
+  | UNDER { Var.of_string "_" }
 
 value :
   | i=INT { Evalml.Value.Int i }
@@ -136,7 +138,8 @@ clauses :
   | p=pat RIGHTARROW e=expr BAR c=clauses { (p, e) :: c }
 
 pat :
-  | v=var { if Var.to_string v = "_" then Expr.WildPat else Expr.VarPat v }
+  | UNDER { Expr.WildPat }
+  | v=VAR { Expr.VarPat (Var.of_string v) }
   | NIL { Expr.NilPat }
   | l=pat CONS r=pat { Expr.ConsPat (l, r) }
   | LPAREN p=pat RPAREN { p }

@@ -15,7 +15,8 @@ let reserved = [
   ("with", Parser.WITH);
   ("int", Parser.INTT);
   ("bool", Parser.BOOLT);
-  ("list", Parser.LISTT)
+  ("list", Parser.LISTT);
+  ("_", Parser.UNDER);
 ]
 }
 
