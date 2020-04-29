@@ -59,3 +59,6 @@ rule main = parse
       Parser.TVAR id
     }
   | "." { Parser.DOT }
+  | ">>" { Parser.GTGT }
+  | "{" { Parser.LBRACE }
+  | "}" { Parser.RBRACE }

@@ -2,19 +2,21 @@ open Printf
 open Base
 
 let main () =
-  let poly_typing = ref true in
+  let poly_typing = ref true and eval_cont = ref false in
   Arg.parse
     [
       ( "--no-poly",
         Arg.Clear poly_typing,
         "Use TypingML4 instead of PolyTypingML4" );
+      ("--cont", Arg.Set eval_cont, "Use EvalContML*");
     ]
     (fun s -> raise @@ Arg.Bad (sprintf "invalid argument '%s'" s))
     "";
+  let parser = if !eval_cont then Parser.toplevel_cont else Parser.toplevel
+  and lexbuf = Lexing.from_channel stdin in
   eprintf "# %!";
-  let lexbuf = Lexing.from_channel stdin in
   let toplevel =
-    try Parser.toplevel Lexer.main lexbuf with
+    try parser Lexer.main lexbuf with
     | Failure e ->
         eprintf "%s\n" e;
         exit 1
@@ -103,3 +105,12 @@ let main () =
               Typing.substitute_deriv sub deriv )
       in
       Typing.TDeriv.output deriv
+  | Cont { expr; cont } ->
+      let open Evalml in
+      let deriv =
+        try Evalcont.eval_expr expr cont (fun (_, d) -> d)
+        with Evalcont.Error s ->
+          eprintf "%s\n" s;
+          exit 1
+      in
+      Evalcont.CDeriv.output ~indent:0 deriv

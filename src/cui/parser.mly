@@ -26,6 +26,8 @@ open Base
 %token <string> TVAR
 %token DOT
 %token UNDER
+%token GTGT
+%token LBRACE RBRACE
 
 %right RIGHTARROW
 %nonassoc LISTT
@@ -42,10 +44,15 @@ open Base
 
 %start toplevel
 %type <Toplevel.t> toplevel
+
 %start loc_name
 %type <Evalml.Loc.t> loc_name
+
 %start types_expected
 %type <Typingml.Types.t option> types_expected
+
+%start toplevel_cont
+%type <Toplevel.t> toplevel_cont
 %%
 
 toplevel :
@@ -65,6 +72,7 @@ eval_end :
   | END { false }
   | EVALTO { true }
 
+
 store :
   | s=store_binds { let l, v = List.split s in Evalml.Store.create l v }
 
@@ -78,6 +86,11 @@ store_bind :
 
 loc :
   | l=LOC { Evalml.Loc.of_string l }
+
+loc_name :
+  | value SLASH l=loc EQ { l }
+  | value COMMA l=loc EQ { l }
+
 
 env :
   | { [] }
@@ -107,6 +120,7 @@ value :
   | l=value CONS r=value { Evalml.Value.Cons (l, r) }
   | LPAREN v=value RPAREN { v }
 
+
 expr :
   | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { Expr.If (c, t, f) }
   | l=expr LT r=expr { Expr.BOp (LtOp, l, r) }
@@ -133,6 +147,7 @@ simple :
   | DEREF e=simple { Expr.Deref e }
   | NIL { Expr.Nil }
 
+
 clauses :
   | p=pat RIGHTARROW e=expr %prec prec_match { [ (p, e) ] }
   | p=pat RIGHTARROW e=expr BAR c=clauses { (p, e) :: c }
@@ -144,9 +159,6 @@ pat :
   | l=pat CONS r=pat { Expr.ConsPat (l, r) }
   | LPAREN p=pat RPAREN { p }
 
-loc_name :
-  | value SLASH l=loc EQ { l }
-  | value COMMA l=loc EQ { l }
 
 type_env_not_empty :
   | b=type_bind { [b] }
@@ -177,3 +189,23 @@ tvar :
 types_expected :
   | END { None }
   | t=types END { Some t }
+
+
+toplevel_cont :
+  | e=expr c=cont eval_end { Toplevel.create_cont e c }
+
+cont :
+  | { [] }
+  | GTGT UNDER { [] }
+  | GTGT LBRACE u=cont_unit RBRACE c=cont { u :: c }
+
+cont_unit :
+  | UNDER PLUS e=expr { Evalml.Cont.BOpL (Expr.PlusOp, e) }
+  | UNDER MINUS e=expr { Evalml.Cont.BOpL (Expr.MinusOp, e) }
+  | UNDER TIMES e=expr { Evalml.Cont.BOpL (Expr.TimesOp, e) }
+  | UNDER LT e=expr { Evalml.Cont.BOpL (Expr.LtOp, e) }
+  | v=value PLUS UNDER { Evalml.Cont.BOpR (Expr.PlusOp, v) }
+  | v=value MINUS UNDER { Evalml.Cont.BOpR (Expr.MinusOp, v) }
+  | v=value TIMES UNDER { Evalml.Cont.BOpR (Expr.TimesOp, v) }
+  | v=value LT UNDER { Evalml.Cont.BOpR (Expr.LtOp, v) }
+  | IF UNDER THEN e1=expr ELSE e2=expr { Evalml.Cont.If (e1, e2) }

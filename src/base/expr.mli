@@ -1,5 +1,7 @@
 type binOp = PlusOp | MinusOp | TimesOp | LtOp | AssignOp | ConsOp
 
+val binop_to_string : binOp -> string
+
 type pat = VarPat of Var.t | NilPat | ConsPat of pat * pat | WildPat
 
 val pat_to_string : pat -> string
