@@ -60,9 +60,9 @@ let refvar v = Expr.Ref (varex v)
 
 let derefv s = Expr.Deref (varex s)
 
-let assign (l, r) = Expr.BOp (AssignOp, l, r)
+let assign (l, r) = Expr.Assign (l, r)
 
-let cons (l, r) = Expr.BOp (ConsOp, l, r)
+let cons (l, r) = Expr.Cons (l, r)
 
 let icons (i, l) = cons (Expr.Int i, l)
 

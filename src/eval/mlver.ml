@@ -33,8 +33,7 @@ let detect ?store ?env expr =
   in
   let rec expr_detect = function
     | Expr.Int _ | Expr.Bool _ -> ML1
-    | Expr.BOp ((PlusOp | MinusOp | TimesOp | LtOp), l, r) ->
-        vmax ML1 (List.map expr_detect [ l; r ])
+    | Expr.BOp (_, l, r) -> vmax ML1 (List.map expr_detect [ l; r ])
     | Expr.If (c, t, f) -> vmax ML1 (List.map expr_detect [ c; t; f ])
     | Expr.Var _ -> ML3
     | Expr.Let (_, e1, e2) -> vmax ML3 (List.map expr_detect [ e1; e2 ])
@@ -43,9 +42,9 @@ let detect ?store ?env expr =
     | Expr.LetRec (_, _, e1, e2) -> vmax ML3 (List.map expr_detect [ e1; e2 ])
     | Expr.Ref e -> vmax RefML3 [ expr_detect e ]
     | Expr.Deref e -> vmax RefML3 [ expr_detect e ]
-    | Expr.BOp (AssignOp, l, r) -> vmax RefML3 (List.map expr_detect [ l; r ])
+    | Expr.Assign (l, r) -> vmax RefML3 (List.map expr_detect [ l; r ])
     | Expr.Nil -> ML4
-    | Expr.BOp (ConsOp, l, r) -> vmax ML4 (List.map expr_detect [ l; r ])
+    | Expr.Cons (l, r) -> vmax ML4 (List.map expr_detect [ l; r ])
     | Expr.Match (e1, [ (NilPat, e2); (ConsPat (VarPat _, VarPat _), e3) ]) ->
         vmax ML4 (List.map expr_detect [ e1; e2; e3 ])
     | Expr.Match (_, []) -> failwith "Empty match clauses"

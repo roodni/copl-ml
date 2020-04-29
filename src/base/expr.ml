@@ -1,14 +1,12 @@
 open Printf
 
-type binOp = PlusOp | MinusOp | TimesOp | LtOp | AssignOp | ConsOp
+type binOp = PlusOp | MinusOp | TimesOp | LtOp
 
 let binop_to_string = function
   | PlusOp -> "+"
   | MinusOp -> "-"
   | TimesOp -> "*"
   | LtOp -> "<"
-  | AssignOp -> ":="
-  | ConsOp -> "::"
 
 type pat = VarPat of Var.t | NilPat | ConsPat of pat * pat | WildPat
 
@@ -35,15 +33,17 @@ type t =
   | LetRec of Var.t * Var.t * t * t
   | Ref of t
   | Deref of t
+  | Assign of t * t
   | Nil
+  | Cons of t * t
   | Match of t * (pat * t) list
 
 let precedence = function
   | Match _ -> 10
   | Let _ | Fun _ | LetRec _ | If _ -> 20
-  | BOp (AssignOp, _, _) -> 30
+  | Assign _ -> 30
   | BOp (LtOp, _, _) -> 40
-  | BOp (ConsOp, _, _) -> 50
+  | Cons _ -> 50
   | BOp ((PlusOp | MinusOp), _, _) -> 60
   | BOp (TimesOp, _, _) -> 70
   | App _ | Ref _ -> 80
@@ -59,9 +59,7 @@ let to_string expr =
       | Bool b -> string_of_bool b
       | BOp (op, l, r) ->
           let lp, rp =
-            match op with
-            | PlusOp | MinusOp | TimesOp | LtOp -> (prec - 1, prec)
-            | AssignOp | ConsOp -> (prec, prec - 1)
+            match op with PlusOp | MinusOp | TimesOp | LtOp -> (prec - 1, prec)
           in
           sprintf "%s %s %s" (to_string lp l) (binop_to_string op)
             (to_string rp r)
@@ -82,7 +80,11 @@ let to_string expr =
             (Var.to_string x) (to_string 0 e1)
             (to_string (prec - 1) e2)
       | Deref e -> "!" ^ to_string prec e
+      | Assign (e1, e2) ->
+          sprintf "%s := %s" (to_string prec e1) (to_string (prec - 1) e2)
       | Nil -> "[]"
+      | Cons (e1, e2) ->
+          sprintf "%s :: %s" (to_string prec e1) (to_string (prec - 1) e2)
       | Match (e, c) ->
           let rec clauses_to_string c =
             let m_to_string (pat, expr) =

@@ -1,4 +1,4 @@
-type binOp = PlusOp | MinusOp | TimesOp | LtOp | AssignOp | ConsOp
+type binOp = PlusOp | MinusOp | TimesOp | LtOp
 
 val binop_to_string : binOp -> string
 
@@ -18,7 +18,9 @@ type t =
   | LetRec of Var.t * Var.t * t * t
   | Ref of t
   | Deref of t
+  | Assign of t * t
   | Nil
+  | Cons of t * t
   | Match of t * (pat * t) list
 
 val to_string : t -> string

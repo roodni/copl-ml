@@ -133,9 +133,9 @@ expr :
   | e=simple { e }
   | LET REC f=var EQ FUN a=var RIGHTARROW e1=expr IN e2=expr %prec prec_letrec
       { Expr.LetRec (f, a, e1, e2) }
-  | l=expr ASSIGN r=expr { Expr.BOp (AssignOp, l, r) }
+  | l=expr ASSIGN r=expr { Expr.Assign (l, r) }
   | REF e=simple { Expr.Ref e }
-  | l=expr CONS r=expr { Expr.BOp (ConsOp, l, r) }
+  | l=expr CONS r=expr { Expr.Cons (l, r) }
   | MATCH e=expr WITH c=clauses { Expr.Match (e, c) }
 
 simple :

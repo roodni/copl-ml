@@ -164,8 +164,7 @@ let eval evalee =
           in
           let ret, retderiv = eval @@ ee_create ~store retexpr in
           (ret, rule, [ cderiv; retderiv ])
-      | Expr.BOp (((PlusOp | MinusOp | TimesOp | LtOp) as op), lexpr, rexpr)
-        -> (
+      | Expr.BOp (op, lexpr, rexpr) -> (
           let (lvalue, store), lderiv = eval @@ ee_create lexpr in
           let (rvalue, store), rderiv = eval @@ ee_create ~store rexpr in
           match (lvalue, rvalue) with
@@ -189,7 +188,6 @@ let eval evalee =
                 | LtOp ->
                     let b = li < ri in
                     (Value.Bool b, ELt, LtJ (li, ri, b), BLt)
-                | _ -> assert false
               in
               ( (value, store),
                 erule,
@@ -199,7 +197,7 @@ let eval evalee =
                   EDeriv.{ concl = bjudg; rule = brule; premises = [] };
                 ] )
           | _ -> error "Both arguments must be int" )
-      | Expr.BOp (AssignOp, lexpr, rexpr) -> (
+      | Expr.Assign (lexpr, rexpr) -> (
           let (lvalue, store), lderiv = eval @@ ee_create lexpr in
           let (rvalue, store), rderiv = eval @@ ee_create ~store rexpr in
           match lvalue with
@@ -272,7 +270,7 @@ let eval evalee =
               ((value, store), EDeref, [ premise ])
           | _ -> error (sprintf "%s must be loc" (Expr.to_string e)) )
       | Expr.Nil -> (ed_of_value Value.Nil, ENil, [])
-      | Expr.BOp (ConsOp, l, r) ->
+      | Expr.Cons (l, r) ->
           let (lvalue, _), lderiv = eval @@ ee_create l in
           let (rvalue, _), rderiv = eval @@ ee_create r in
           (ed_of_value @@ Value.Cons (lvalue, rvalue), ECons, [ lderiv; rderiv ])

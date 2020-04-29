@@ -81,7 +81,7 @@ let typing ~poly tenv expr =
             |> Teqs.unify
           in
           (sub, tt, TIf, [ cderiv; tderiv; fderiv ])
-      | Expr.BOp (((PlusOp | MinusOp | TimesOp | LtOp) as op), e1, e2) ->
+      | Expr.BOp (op, e1, e2) ->
           let s1, t1, deriv1 = principal tenv e1
           and s2, t2, deriv2 = principal tenv e2 in
           let sub =
@@ -96,7 +96,6 @@ let typing ~poly tenv expr =
             | MinusOp -> TMinus
             | TimesOp -> if poly then TMult else TTimes
             | LtOp -> TLt
-            | _ -> assert false
           in
           (sub, ty, rule, [ deriv1; deriv2 ])
       | Expr.Var v ->
@@ -155,7 +154,7 @@ let typing ~poly tenv expr =
       | Expr.Nil ->
           let a = Types.Var (Tvar.generate ()) in
           (Tsub.empty, Types.List a, TNil, [])
-      | Expr.BOp (ConsOp, e1, e2) ->
+      | Expr.Cons (e1, e2) ->
           let s1, t1, deriv1 = principal tenv e1
           and s2, t2, deriv2 = principal tenv e2 in
           let sub =

@@ -25,7 +25,6 @@ module System = struct
           | MinusOp -> "minus"
           | TimesOp -> "times"
           | LtOp -> "less than"
-          | _ -> assert false
         in
         sprintf "%d %s %d is %s" l op_s r (Value.to_string v)
 end
@@ -62,7 +61,7 @@ and eval_cont value cont k =
       eval_expr e
         (Cont.BOpR (op, value) :: cont)
         (fun (v, d) -> return v "C-EvalR" [ d ])
-  | Cont.BOpR (((PlusOp | MinusOp | TimesOp | LtOp) as op), vleft) :: cont -> (
+  | Cont.BOpR (op, vleft) :: cont -> (
       match (vleft, value) with
       | Value.Int il, Value.Int ir ->
           let value, crule, brule =
@@ -71,7 +70,6 @@ and eval_cont value cont k =
             | MinusOp -> (Value.Int (il - ir), "C-Minus", "B-Minus")
             | TimesOp -> (Value.Int (il * ir), "C-Times", "B-Times")
             | LtOp -> (Value.Bool (il < ir), "C-Lt", "B-Lt")
-            | _ -> assert false
           in
           let bderiv =
             CDeriv.
@@ -84,7 +82,6 @@ and eval_cont value cont k =
           eval_cont value cont (fun (v, d) -> return v crule [ bderiv; d ])
       | _ -> raise @@ Error (sprintf "Type error: %s" (Expr.binop_to_string op))
       )
-  | Cont.BOpR ((ConsOp | AssignOp), _) :: _ -> assert false
   | Cont.If (t, f) :: cont -> (
       match value with
       | Value.Bool true ->
