@@ -22,5 +22,6 @@ type t =
   | Nil
   | Cons of t * t
   | Match of t * (pat * t) list
+  | Letcc of Var.t * t
 
 val to_string : t -> string

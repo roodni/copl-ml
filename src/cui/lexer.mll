@@ -17,6 +17,7 @@ let reserved = [
   ("bool", Parser.BOOLT);
   ("list", Parser.LISTT);
   ("_", Parser.UNDER);
+  ("letcc", Parser.LETCC);
 ]
 }
 

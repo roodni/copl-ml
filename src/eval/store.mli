@@ -1,3 +1,5 @@
+open Table
+
 type t
 
 exception Invalid_reference

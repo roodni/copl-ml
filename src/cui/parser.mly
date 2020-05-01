@@ -1,5 +1,7 @@
 %{
 open Base
+open Evalml
+open Table
 %}
 
 %token END
@@ -28,11 +30,12 @@ open Base
 %token UNDER
 %token GTGT
 %token LBRACE RBRACE
+%token LETCC
 
 %right RIGHTARROW
 %nonassoc LISTT
 
-%nonassoc prec_let prec_fun prec_letrec prec_match
+%nonassoc prec_let prec_fun prec_letrec prec_match prec_letcc
 %nonassoc BAR
 %nonassoc prec_if
 %right ASSIGN
@@ -74,7 +77,7 @@ eval_end :
 
 
 store :
-  | s=store_binds { let l, v = List.split s in Evalml.Store.create l v }
+  | s=store_binds { let l, v = List.split s in Store.create l v }
 
 store_binds :
   | { [] }
@@ -85,7 +88,7 @@ store_bind :
   | l=loc EQ v=value  { (l, v) }
 
 loc :
-  | l=LOC { Evalml.Loc.of_string l }
+  | l=LOC { Loc.of_string l }
 
 loc_name :
   | value SLASH l=loc EQ { l }
@@ -108,17 +111,18 @@ var :
   | UNDER { Var.of_string "_" }
 
 value :
-  | i=INT { Evalml.Value.Int i }
-  | TRUE { Evalml.Value.Bool true }
-  | FALSE { Evalml.Value.Bool false }
+  | i=INT { Value.Int i }
+  | TRUE { Value.Bool true }
+  | FALSE { Value.Bool false }
   | LPAREN en=env RPAREN LBRACKET FUN v=var RIGHTARROW ex=expr RBRACKET
-      { Evalml.Value.Fun (en, v, ex) }
+      { Value.Fun (en, v, ex) }
   | LPAREN en=env RPAREN LBRACKET REC f=var EQ FUN a=var RIGHTARROW ex=expr RBRACKET
-      { Evalml.Value.RecFun (en, f, a, ex) }
-  | l=loc { Evalml.Value.Loc l }
-  | NIL { Evalml.Value.Nil }
-  | l=value CONS r=value { Evalml.Value.Cons (l, r) }
+      { Value.RecFun (en, f, a, ex) }
+  | l=loc { Value.Loc l }
+  | NIL { Value.Nil }
+  | l=value CONS r=value { Value.Cons (l, r) }
   | LPAREN v=value RPAREN { v }
+  | LBRACKET k=cont RBRACKET { Value.Cont k }
 
 
 expr :
@@ -134,6 +138,7 @@ expr :
   | REF e=simple { Expr.Ref e }
   | l=expr CONS r=expr { Expr.Cons (l, r) }
   | MATCH e=expr WITH c=clauses { Expr.Match (e, c) }
+  | LETCC v=var IN e=expr %prec prec_letcc { Expr.Letcc (v, e) }
 
 %inline bop :
   | LT { Expr.LtOp }
@@ -195,25 +200,28 @@ types_expected :
 
 
 toplevel_cont :
-  | e=expr c=cont eval_end { Toplevel.create_cont e c }
-  | env=env TURNSTILE e=expr c=cont eval_end { Toplevel.create_cont ~env e c }
+  | env=env_optional e=expr eval_end { Toplevel.create_cont ?env e [] }
+  | env=env_optional e=expr GTGT c=cont eval_end { Toplevel.create_cont ?env e c }
 
 cont :
-  | { [] }
-  | GTGT UNDER { [] }
-  | GTGT LBRACE u=cont_unit RBRACE c=cont { u :: c }
+  | UNDER { [] }
+  | u=cont_unit { [u] }
+  | u=cont_unit GTGT c=cont { u :: c }
 
 cont_unit :
-  | env=env_optional UNDER op=bop e=expr { Evalml.Cont.BOpL (op, env, e) }
-  | v=value op=bop UNDER { Evalml.Cont.BOpR (op, v) }
-  | env=env_optional IF UNDER THEN e1=expr ELSE e2=expr { Evalml.Cont.If (env, e1, e2) }
-  | env=env TURNSTILE LET v=var EQ UNDER IN e=expr { Evalml.Cont.Let (env, v, e) }
-  | env=env TURNSTILE UNDER e=expr { Evalml.Cont.AppL (env, e) }
-  | v=value UNDER { Evalml.Cont.AppR v }
-  | env=env TURNSTILE UNDER CONS e=expr { Evalml.Cont.ConsL (env, e) }
-  | v=value CONS UNDER { Evalml.Cont.ConsR v }
+  | LBRACE u=cont_braced RBRACE { u }
+
+cont_braced :
+  | env=env_optional UNDER op=bop e=expr { Cont.BOpL (op, env, e) }
+  | v=value op=bop UNDER { Cont.BOpR (op, v) }
+  | env=env_optional IF UNDER THEN e1=expr ELSE e2=expr { Cont.If (env, e1, e2) }
+  | env=env TURNSTILE LET v=var EQ UNDER IN e=expr { Cont.Let (env, v, e) }
+  | env=env TURNSTILE UNDER e=expr { Cont.AppL (env, e) }
+  | v=value UNDER { Cont.AppR v }
+  | env=env TURNSTILE UNDER CONS e=expr { Cont.ConsL (env, e) }
+  | v=value CONS UNDER { Cont.ConsR v }
   | env=env TURNSTILE MATCH UNDER WITH NIL RIGHTARROW e1=expr BAR x=var CONS y=var RIGHTARROW e2=expr
-      {Evalml.Cont.Match (env, e1, x, y, e2) }
+      {Cont.Match (env, e1, x, y, e2) }
 
 %inline env_optional :
   | { None }

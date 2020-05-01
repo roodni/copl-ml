@@ -1,4 +1,5 @@
 open Base
+open Table
 open Printf
 
 module System = struct
@@ -7,7 +8,7 @@ module System = struct
   let rule_to_string (r : rule) = r
 
   type judgment =
-    | EvalEJ of Value.env option * Expr.t * Cont.t * Value.t
+    | EvalEJ of Env.t option * Expr.t * Cont.t * Value.t
     | EvalCJ of Value.t * Cont.t * Value.t
     | BinOpJ of Expr.binOp * int * int * Value.t
 
@@ -17,7 +18,7 @@ module System = struct
           match env with
           | None -> ""
           | Some [] -> "|- "
-          | Some env -> sprintf "%s |- " (Value.env_to_string env)
+          | Some env -> sprintf "%s |- " (Env.to_string env)
         in
         sprintf "%s%s >> %s evalto %s" s_env (Expr.to_string e)
           (Cont.to_string k) (Value.to_string v)
@@ -95,6 +96,12 @@ let rec eval_expr env expr cont k =
           eval_expr (Some env) e1
             (Cont.Match (env, e2, x, y, e3) :: cont)
             (fun (v, d) -> return v "E-Match" [ d ]))
+  | Expr.Letcc (x, e) ->
+      bind_env (fun env ->
+          eval_expr
+            (Some ((x, Value.Cont cont) :: env))
+            e cont
+            (fun (v, d) -> return v "E-LetCc" [ d ]))
   | _ -> Error (sprintf "Unimplemented expression: %s" (Expr.to_string expr))
 
 and eval_cont value cont k =
@@ -154,6 +161,8 @@ and eval_cont value cont k =
             (Some ((x, value) :: (f, vfun) :: env))
             e cont
             (fun (v, d) -> return v "C-EvalFunR" [ d ])
+      | Value.Cont cont ->
+          eval_cont value cont (fun (v, d) -> return v "C-EvalFunC" [ d ])
       | _ -> Error "Type error: EvalFun" )
   | Cont.ConsL (env, e) :: cont ->
       eval_expr (Some env) e (Cont.ConsR value :: cont) (fun (v, d) ->

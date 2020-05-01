@@ -1,9 +1,10 @@
 open Base
+open Table
 
 (* 評価されるもの *)
 type ee
 
-val ee_create : Mlver.t -> ?store:Store.t -> ?env:Value.env -> Expr.t -> ee
+val ee_create : Mlver.t -> ?store:Store.t -> ?env:Env.t -> Expr.t -> ee
 
 val ee_to_string : ee -> string
 

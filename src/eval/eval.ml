@@ -1,7 +1,8 @@
 open Base
+open Table
 open Printf
 
-type ee = { store : Store.t; env : Value.env; expr : Expr.t; mlver : Mlver.t }
+type ee = { store : Store.t; env : Env.t; expr : Expr.t; mlver : Mlver.t }
 
 let ee_create mlver ?(store = Store.empty) ?(env = []) expr =
   { store; env; expr; mlver }
@@ -12,7 +13,7 @@ let ee_to_string { store; env; expr; mlver } =
   and s_env =
     if mlver = Mlver.ML1 then ""
     else if env = [] then "|- "
-    else sprintf "%s |- " (Value.env_to_string env)
+    else sprintf "%s |- " (Env.to_string env)
   and s_expr = Expr.to_string expr in
   s_store ^ s_env ^ s_expr
 
@@ -111,7 +112,7 @@ module System = struct
     | EMatchM2 -> "E-MatchM2"
     | EMatchN -> "E-MatchN"
 
-  type matched = Value.env option
+  type matched = Env.t option
 
   type judgment =
     | EvalJ of { evalee : ee; evaled : ed }
@@ -132,7 +133,7 @@ module System = struct
         match m with
         | Some e ->
             sprintf "%s matches %s when (%s)" (Expr.pat_to_string p)
-              (Value.to_string v) (Value.env_to_string e)
+              (Value.to_string v) (Env.to_string e)
         | None ->
             sprintf "%s doesn't match %s" (Expr.pat_to_string p)
               (Value.to_string v) )
@@ -321,6 +322,7 @@ let eval evalee =
                       (evaled, EMatchN, [ deriv1; deriv2; deriv3 ]) )
               | _ -> raise @@ Error ("Match failure", ml5_match_root) )
           | _ -> failwith "Illegal match expression" )
+      | Expr.Letcc _ -> error "Use option '--cont'"
     in
     (evaled, EDeriv.{ concl = EvalJ { evalee; evaled }; rule; premises })
   and ml5match p v =

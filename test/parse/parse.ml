@@ -1,6 +1,7 @@
 open OUnit2
 open Base
 open Evalml
+open Table
 
 let parse_test title ?store ?env expr str =
   let expected = Cui.Toplevel.create_eval ?store ?env expr ~is_judg:false in

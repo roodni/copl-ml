@@ -1,6 +1,7 @@
 open OUnit2
 open Base
 open Evalml
+open Table
 
 let eval_test mlver title value ?(stores = (Store.empty, Store.empty))
     ?(env = []) expr =

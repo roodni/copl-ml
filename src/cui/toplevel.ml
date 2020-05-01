@@ -3,9 +3,9 @@ open Base
 type t =
   | Eval of {
       store : Evalml.Store.t option;
-      env : Evalml.Value.env option;
+      env : Evalml.Table.Env.t option;
       expr : Expr.t;
-      cont : Evalml.Cont.t option;
+      cont : Evalml.Table.Cont.t option;
       is_judg : bool;
     }
   | Typing of { tenv : Typingml.Tenv.t; expr : Expr.t }

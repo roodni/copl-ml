@@ -50,6 +50,7 @@ let detect ?store ?env expr =
     | Expr.Match (_, []) -> failwith "Empty match clauses"
     | Expr.Match (e1, clauses) ->
         vmax ML5 (List.map expr_detect (e1 :: List.map snd clauses))
+    | Expr.Letcc (_, e) -> vmax ML4 [ expr_detect e ]
   in
   let ver =
     if store <> None then RefML3 else if env <> None then ML3 else ML1

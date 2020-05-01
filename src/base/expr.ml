@@ -37,17 +37,19 @@ type t =
   | Nil
   | Cons of t * t
   | Match of t * (pat * t) list
+  | Letcc of Var.t * t
 
 let precedence = function
   | Match _ -> 10
-  | Let _ | Fun _ | LetRec _ | If _ -> 20
+  | Let _ | Fun _ | LetRec _ | If _ | Letcc _ -> 20
   | Assign _ -> 30
   | BOp (LtOp, _, _) -> 40
   | Cons _ -> 50
   | BOp ((PlusOp | MinusOp), _, _) -> 60
   | BOp (TimesOp, _, _) -> 70
-  | App _ | Ref _ -> 80
-  | Deref _ -> 90
+  | Int i when i < 0 -> 90
+  | App _ | Ref _ -> 100
+  | Deref _ -> 110
   | Int _ | Bool _ | Var _ | Nil -> 1000
 
 let to_string expr =
@@ -97,6 +99,8 @@ let to_string expr =
             | [] -> assert false
           in
           sprintf "match %s with %s" (to_string 0 e) (clauses_to_string c)
+      | Letcc (x, e) ->
+          sprintf "letcc %s in %s" (Var.to_string x) (to_string (prec - 1) e)
     in
     if prec > parent_prec then s else "(" ^ s ^ ")"
   in
