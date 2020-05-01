@@ -193,6 +193,7 @@ types_expected :
 
 toplevel_cont :
   | e=expr c=cont eval_end { Toplevel.create_cont e c }
+  | env=env TURNSTILE e=expr c=cont eval_end { Toplevel.create_cont ~env e c }
 
 cont :
   | { [] }
@@ -209,6 +210,13 @@ cont_unit :
   | v=value TIMES UNDER { Evalml.Cont.BOpR (Expr.TimesOp, v) }
   | v=value LT UNDER { Evalml.Cont.BOpR (Expr.LtOp, v) }
   | env=env_optional IF UNDER THEN e1=expr ELSE e2=expr { Evalml.Cont.If (env, e1, e2) }
+  | env=env TURNSTILE LET v=var EQ UNDER IN e=expr { Evalml.Cont.Let (env, v, e) }
+  | env=env TURNSTILE UNDER e=expr { Evalml.Cont.AppL (env, e) }
+  | v=value UNDER { Evalml.Cont.AppR v }
+  | env=env TURNSTILE UNDER CONS e=expr { Evalml.Cont.ConsL (env, e) }
+  | v=value CONS UNDER { Evalml.Cont.ConsR v }
+  | env=env TURNSTILE MATCH UNDER WITH NIL RIGHTARROW e1=expr BAR x=var CONS y=var RIGHTARROW e2=expr
+      {Evalml.Cont.Match (env, e1, x, y, e2) }
 
 %inline env_optional :
   | { None }
