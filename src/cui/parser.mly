@@ -123,10 +123,7 @@ value :
 
 expr :
   | IF c=expr THEN t=expr ELSE f=expr %prec prec_if { Expr.If (c, t, f) }
-  | l=expr LT r=expr { Expr.BOp (LtOp, l, r) }
-  | l=expr PLUS r=expr { Expr.BOp (PlusOp, l, r) }
-  | l=expr MINUS r=expr { Expr.BOp (MinusOp, l, r) }
-  | l=expr TIMES r=expr { Expr.BOp (TimesOp, l, r) }
+  | l=expr op=bop r=expr { Expr.BOp (op, l, r) }
   | LET v=var EQ e1=expr IN e2=expr %prec prec_let { Expr.Let (v, e1, e2) }
   | FUN v=var RIGHTARROW e=expr %prec prec_fun { Expr.Fun (v, e) }
   | l=expr r=simple { Expr.App (l, r) }
@@ -137,6 +134,12 @@ expr :
   | REF e=simple { Expr.Ref e }
   | l=expr CONS r=expr { Expr.Cons (l, r) }
   | MATCH e=expr WITH c=clauses { Expr.Match (e, c) }
+
+%inline bop :
+  | LT { Expr.LtOp }
+  | PLUS { Expr.PlusOp }
+  | MINUS { Expr.MinusOp }
+  | TIMES { Expr.TimesOp }
 
 simple :
   | i=INT { Expr.Int i }
@@ -201,14 +204,8 @@ cont :
   | GTGT LBRACE u=cont_unit RBRACE c=cont { u :: c }
 
 cont_unit :
-  | env=env_optional UNDER PLUS e=expr { Evalml.Cont.BOpL (Expr.PlusOp, env, e) }
-  | env=env_optional UNDER MINUS e=expr { Evalml.Cont.BOpL (Expr.MinusOp, env, e) }
-  | env=env_optional UNDER TIMES e=expr { Evalml.Cont.BOpL (Expr.TimesOp, env, e) }
-  | env=env_optional UNDER LT e=expr { Evalml.Cont.BOpL (Expr.LtOp, env, e) }
-  | v=value PLUS UNDER { Evalml.Cont.BOpR (Expr.PlusOp, v) }
-  | v=value MINUS UNDER { Evalml.Cont.BOpR (Expr.MinusOp, v) }
-  | v=value TIMES UNDER { Evalml.Cont.BOpR (Expr.TimesOp, v) }
-  | v=value LT UNDER { Evalml.Cont.BOpR (Expr.LtOp, v) }
+  | env=env_optional UNDER op=bop e=expr { Evalml.Cont.BOpL (op, env, e) }
+  | v=value op=bop UNDER { Evalml.Cont.BOpR (op, v) }
   | env=env_optional IF UNDER THEN e1=expr ELSE e2=expr { Evalml.Cont.If (env, e1, e2) }
   | env=env TURNSTILE LET v=var EQ UNDER IN e=expr { Evalml.Cont.Let (env, v, e) }
   | env=env TURNSTILE UNDER e=expr { Evalml.Cont.AppL (env, e) }
