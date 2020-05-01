@@ -32,9 +32,7 @@ end
 open System
 module CDeriv = Deriv.Make (System)
 
-exception Error of string
-
-let rec eval_expr expr cont k =
+let rec eval_expr env expr cont k =
   let return value rule premises =
     k (value, CDeriv.{ concl = EvalEJ (expr, cont, value); rule; premises })
   in
@@ -44,12 +42,14 @@ let rec eval_expr expr cont k =
   | Expr.Bool b ->
       eval_cont (Value.Bool b) cont (fun (v, d) -> return v "E-Bool" [ d ])
   | Expr.BOp (op, e1, e2) ->
-      eval_expr e1
-        (Cont.BOpL (op, e2) :: cont)
+      eval_expr env e1
+        (Cont.BOpL (op, env, e2) :: cont)
         (fun (v, d) -> return v "E-BinOp" [ d ])
   | Expr.If (c, t, f) ->
-      eval_expr c (Cont.If (t, f) :: cont) (fun (v, d) -> return v "E-If" [ d ])
-  | _ -> raise @@ Error "hoge"
+      eval_expr env c
+        (Cont.If (env, t, f) :: cont)
+        (fun (v, d) -> return v "E-If" [ d ])
+  | _ -> Error "hoge"
 
 and eval_cont value cont k =
   let return value' rule premises =
@@ -57,8 +57,8 @@ and eval_cont value cont k =
   in
   match cont with
   | [] -> return value "C-Ret" []
-  | Cont.BOpL (op, e) :: cont ->
-      eval_expr e
+  | Cont.BOpL (op, env, e) :: cont ->
+      eval_expr env e
         (Cont.BOpR (op, value) :: cont)
         (fun (v, d) -> return v "C-EvalR" [ d ])
   | Cont.BOpR (op, vleft) :: cont -> (
@@ -80,12 +80,12 @@ and eval_cont value cont k =
               }
           in
           eval_cont value cont (fun (v, d) -> return v crule [ bderiv; d ])
-      | _ -> raise @@ Error (sprintf "Type error: %s" (Expr.binop_to_string op))
-      )
-  | Cont.If (t, f) :: cont -> (
+      | _ -> Error (sprintf "Type error: %s" (Expr.binop_to_string op)) )
+  | Cont.If (env, t, f) :: cont -> (
       match value with
       | Value.Bool true ->
-          eval_expr t cont (fun (v, d) -> return v "C-IfT" [ d ])
+          eval_expr env t cont (fun (v, d) -> return v "C-IfT" [ d ])
       | Value.Bool false ->
-          eval_expr f cont (fun (v, d) -> return v "C-IfF" [ d ])
-      | _ -> raise @@ Error (sprintf "Type error: if") )
+          eval_expr env f cont (fun (v, d) -> return v "C-IfF" [ d ])
+      | _ -> Error (sprintf "Type error: if") )
+  | _ -> Error "fuga"

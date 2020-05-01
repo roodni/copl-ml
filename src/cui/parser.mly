@@ -200,12 +200,16 @@ cont :
   | GTGT LBRACE u=cont_unit RBRACE c=cont { u :: c }
 
 cont_unit :
-  | UNDER PLUS e=expr { Evalml.Cont.BOpL (Expr.PlusOp, e) }
-  | UNDER MINUS e=expr { Evalml.Cont.BOpL (Expr.MinusOp, e) }
-  | UNDER TIMES e=expr { Evalml.Cont.BOpL (Expr.TimesOp, e) }
-  | UNDER LT e=expr { Evalml.Cont.BOpL (Expr.LtOp, e) }
+  | env=env_optional UNDER PLUS e=expr { Evalml.Cont.BOpL (Expr.PlusOp, env, e) }
+  | env=env_optional UNDER MINUS e=expr { Evalml.Cont.BOpL (Expr.MinusOp, env, e) }
+  | env=env_optional UNDER TIMES e=expr { Evalml.Cont.BOpL (Expr.TimesOp, env, e) }
+  | env=env_optional UNDER LT e=expr { Evalml.Cont.BOpL (Expr.LtOp, env, e) }
   | v=value PLUS UNDER { Evalml.Cont.BOpR (Expr.PlusOp, v) }
   | v=value MINUS UNDER { Evalml.Cont.BOpR (Expr.MinusOp, v) }
   | v=value TIMES UNDER { Evalml.Cont.BOpR (Expr.TimesOp, v) }
   | v=value LT UNDER { Evalml.Cont.BOpR (Expr.LtOp, v) }
-  | IF UNDER THEN e1=expr ELSE e2=expr { Evalml.Cont.If (e1, e2) }
+  | env=env_optional IF UNDER THEN e1=expr ELSE e2=expr { Evalml.Cont.If (env, e1, e2) }
+
+%inline env_optional :
+  | { None }
+  | env=env TURNSTILE { Some env }

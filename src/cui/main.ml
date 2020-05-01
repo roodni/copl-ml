@@ -25,7 +25,7 @@ let main () =
         exit 1
   in
   match toplevel with
-  | Eval { store; env; expr; is_judg } ->
+  | Eval { store; env; expr; is_judg; cont = None } ->
       let open Evalml in
       let mlver =
         try Mlver.detect ?store ?env expr
@@ -69,6 +69,13 @@ let main () =
         else deriv
       in
       Eval.EDeriv.output deriv
+  | Eval { env; expr; cont = Some cont; _ } -> (
+      let open Evalml in
+      match Evalcont.eval_expr env expr cont (fun (_, d) -> Ok d) with
+      | Ok deriv -> Evalcont.CDeriv.output deriv
+      | Error s ->
+          eprintf "%s\n" s;
+          exit 1 )
   | Typing { tenv; expr } ->
       let open Typingml in
       let _, ty, deriv =
@@ -105,12 +112,3 @@ let main () =
               Typing.substitute_deriv sub deriv )
       in
       Typing.TDeriv.output deriv
-  | Cont { expr; cont } ->
-      let open Evalml in
-      let deriv =
-        try Evalcont.eval_expr expr cont (fun (_, d) -> d)
-        with Evalcont.Error s ->
-          eprintf "%s\n" s;
-          exit 1
-      in
-      Evalcont.CDeriv.output ~indent:0 deriv
