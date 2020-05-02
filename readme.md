@@ -9,13 +9,15 @@
 - EvalML1
 - EvalML2
 - EvalML3
-- EvalRefML3
 - EvalML4
 - EvalML5
-- TypingML4 (オプション`--no-poly`が必要です)
+- TypingML4 (`--no-poly`が必要)
 - PolyTypingML4
+- EvalContML1 (`--cont`が必要)
+- EvalContML4 (`--cont`が必要)
+- EvalRefML3
 
-### デモ
+### 使用例
 ```
 $ dune exec bin/main.exe
 # @l = 2 / x = @l |- !x + 3 evalto 5 / @l = 2
@@ -31,22 +33,25 @@ ML version: EvalRefML3
 
 ## 依存するソフトウェア
 - ocaml (4.09.1)
-- dune (2.4.0)
+- dune (2.5.1)
 - menhir (20200211)
 - ounit2 (2.2.2)
 
 ## 使い方
 ### 実行
 ```
-dune exec bin/main.exe [-- --no-poly]
+dune exec bin/main.exe [-- [--no-poly] [--cont]]
 ```
+
 - windows以外の環境でも拡張子`.exe`を付けます。
 - TypingML4を使用する場合、オプション`--no-poly`が必要です。
+- EvalContML*を仕様する場合、オプション`--cont`が必要です。
 
 ### 入力の形式
-`[]`内は省略可能です。
+- 基本的に演習システムで出題される判断をそのまま入力に与えると動作します。
+- EOFは`;;`として扱われます。
 
-#### 評価
+#### EvalML, EvalRefML
 ```
 [[<Store> /] <Env> |-] <Exp> evalto [<Value> / <Store>]
 [[<Store> /] <Env> |-] <Exp> ;;
@@ -55,14 +60,22 @@ dune exec bin/main.exe [-- --no-poly]
 - 導出システムは入力から判別されます。
 - EvalRefML3ではStoreのLocの名前を得るため`evalto`以降を必要としますが、`evalto`のかわりに`;;`を用いた場合はLocに自動生成された名前を使用します。
 
-#### 型推論
-推論された型が型変数を含んでいない場合:
+#### TypingML
+##### 推論された型が型変数を含んでいない場合
 ```
 <TEnv> |- <Expr> :
 ```
 
-推論された型が型変数を含んでいる場合:
+##### 推論された型が型変数を含んでいる場合
 ```
-<TEnv> |- <Expr> : <Types> EOF
-<TEnv> |- <Expr> : EOF
+<TEnv> |- <Expr> : <Types> ;;
+<TEnv> |- <Expr> : ;;
 ```
+
+#### EvalContML
+```
+[<Env> |-] <Exp> evalto
+[<Env> |-] <Exp> ;;
+```
+
+- 環境の有無によってEvalContML1とEvalContML4が判別されます。
